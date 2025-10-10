@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Package, Search, Eye, RefreshCw } from 'lucide-react'
 import { ActionCard } from './ActionCard'
 import { ProductFormModal } from '../products/ProductFormModal'
+import { ProductsManagementModal } from '../masterdata/ProductsManagementModal'
 import { RestockModal } from '../inventory/RestockModal'
 import { StartStockCountModal } from '../inventory/StartStockCountModal'
 import { RestockingMethodModal } from '../restocking-rfq/RestockingMethodModal'
@@ -14,6 +15,7 @@ export function InventorySection() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false)
+  const [isProductsModalOpen, setIsProductsModalOpen] = useState(false)
   const [isRestockModalOpen, setIsRestockModalOpen] = useState(false)
   const [isRestockingMethodModalOpen, setIsRestockingMethodModalOpen] = useState(false)
   const [isRFQModalOpen, setIsRFQModalOpen] = useState(false)
@@ -45,8 +47,7 @@ export function InventorySection() {
   }
 
   const handleViewProducts = () => {
-    console.log('View Product/s clicked')
-    // TODO: Navigate to products list page
+    setIsProductsModalOpen(true)
   }
 
   const handleRestockProducts = () => {
@@ -146,6 +147,12 @@ export function InventorySection() {
           console.log('RFQ created and sent successfully!')
           // TODO: Optionally show RFQ in dashboard
         }}
+      />
+
+      {/* Products Management Modal */}
+      <ProductsManagementModal
+        isOpen={isProductsModalOpen}
+        onClose={() => setIsProductsModalOpen(false)}
       />
     </div>
   )
