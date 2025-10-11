@@ -192,13 +192,13 @@ export function RestockModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70]">
-      <div className="bg-white rounded-lg w-full max-w-5xl mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center z-[70] overflow-y-auto p-4">
+      <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] sm:max-h-[85vh] my-4 sm:my-auto flex flex-col">
+        {/* Header - Sticky for mobile */}
+        <div className="sticky top-0 bg-white flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 z-10">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Create New Restocking Purchase Order</h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Create New Restocking Purchase Order</h2>
+            <p className="mt-1 text-xs sm:text-sm text-gray-500">
               PO Workflow: Draft → Submitted → Confirmed → Received (Can be cancelled at any stage)
             </p>
           </div>
@@ -207,22 +207,24 @@ export function RestockModal({
             disabled={createRestockingPOMutation.isPending}
             className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 disabled:opacity-50"
           >
-            <X className="h-5 w-5" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
-        {/* RFQ Source Banner */}
-        {sourceRFQResponseId && (
-          <div className="mx-6 mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-2">
-            <div className="flex-shrink-0 w-2 h-2 bg-purple-600 rounded-full"></div>
-            <p className="text-sm text-purple-900">
-              <span className="font-medium">Creating PO from RFQ response</span> — Supplier and products are pre-filled from supplier quote
-            </p>
-          </div>
-        )}
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* RFQ Source Banner */}
+          {sourceRFQResponseId && (
+            <div className="mx-4 sm:mx-6 mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-2">
+              <div className="flex-shrink-0 w-2 h-2 bg-purple-600 rounded-full"></div>
+              <p className="text-xs sm:text-sm text-purple-900">
+                <span className="font-medium">Creating PO from RFQ response</span> — Supplier and products are pre-filled from supplier quote
+              </p>
+            </div>
+          )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
           {/* Supplier & Delivery Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Supplier */}
@@ -245,7 +247,7 @@ export function RestockModal({
 
             {/* Expected Delivery Date */}
             <div>
-              <label htmlFor="expectedDelivery" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="expectedDelivery" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Expected Delivery Date <span className="text-red-500">*</span>
               </label>
               <input
@@ -255,7 +257,7 @@ export function RestockModal({
                 onChange={(e) => setExpectedDeliveryDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 disabled={createRestockingPOMutation.isPending}
               />
               {expectedDeliveryDate && new Date(expectedDeliveryDate) <= new Date() && (
@@ -299,7 +301,7 @@ export function RestockModal({
           {/* Additional Costs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="shippingCost" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="shippingCost" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Shipping Cost (Optional)
               </label>
               <input
@@ -310,13 +312,13 @@ export function RestockModal({
                 value={shippingCost || ''}
                 onChange={(e) => setShippingCost(parseFloat(e.target.value) || 0)}
                 placeholder="0.00"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 disabled={createRestockingPOMutation.isPending}
               />
             </div>
 
             <div>
-              <label htmlFor="taxAmount" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="taxAmount" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Tax Amount (Optional)
               </label>
               <input
@@ -327,7 +329,7 @@ export function RestockModal({
                 value={taxAmount || ''}
                 onChange={(e) => setTaxAmount(parseFloat(e.target.value) || 0)}
                 placeholder="0.00"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 disabled={createRestockingPOMutation.isPending}
               />
             </div>
@@ -335,7 +337,7 @@ export function RestockModal({
 
           {/* Notes */}
           <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="notes" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Notes (Optional)
             </label>
             <textarea
@@ -344,14 +346,14 @@ export function RestockModal({
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="Please confirm pricing. Expedite if possible."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               disabled={createRestockingPOMutation.isPending}
             />
           </div>
 
           {/* Summary */}
           <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-3">--- SUMMARY ---</h3>
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3">--- SUMMARY ---</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal:</span>
@@ -369,32 +371,33 @@ export function RestockModal({
                   <span className="font-medium">₱{taxAmount.toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
+              <div className="flex justify-between text-base sm:text-lg font-bold pt-2 border-t border-gray-200">
                 <span>Total PO Cost:</span>
                 <span>₱{totalAmount.toFixed(2)}</span>
               </div>
             </div>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={createRestockingPOMutation.isPending}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={createRestockingPOMutation.isPending || !isValid()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {createRestockingPOMutation.isPending ? 'Creating...' : 'Save as Draft'}
-            </button>
-          </div>
         </form>
+        </div>
+
+        {/* Action Buttons - Sticky for mobile */}
+        <div className="sticky bottom-0 flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 bg-white">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={createRestockingPOMutation.isPending}
+            className="px-4 py-2 text-sm sm:text-base border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={createRestockingPOMutation.isPending || !isValid()}
+            className="px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {createRestockingPOMutation.isPending ? 'Creating...' : 'Save as Draft'}
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -44,16 +44,16 @@ export function PriceHistoryModal({
     : 'Price History'
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold">{modalTitle}</h2>
+    <div className="fixed inset-0 bg-black/50 flex items-start sm:items-center justify-center z-50 overflow-y-auto p-4">
+      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] sm:max-h-[85vh] my-4 sm:my-auto flex flex-col">
+        {/* Header - Sticky for mobile */}
+        <div className="sticky top-0 bg-white flex items-center justify-between p-4 sm:p-6 border-b z-10">
+          <h2 className="text-lg sm:text-xl font-semibold">{modalTitle}</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
@@ -230,11 +230,11 @@ export function PriceHistoryModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t">
+        {/* Footer - Sticky for mobile */}
+        <div className="sticky bottom-0 flex justify-end gap-3 p-4 sm:p-6 border-t bg-white">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm sm:text-base text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
             Close
           </button>
