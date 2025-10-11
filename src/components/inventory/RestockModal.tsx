@@ -192,10 +192,10 @@ export function RestockModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center z-[70] overflow-y-auto p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-[70] overflow-y-auto p-4">
       <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] sm:max-h-[85vh] my-4 sm:my-auto flex flex-col">
-        {/* Header - Sticky for mobile */}
-        <div className="sticky top-0 bg-white flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 z-10">
+        {/* Header */}
+        <div className="bg-white flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
           <div>
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Create New Restocking Purchase Order</h2>
             <p className="mt-1 text-xs sm:text-sm text-gray-500">
@@ -380,8 +380,8 @@ export function RestockModal({
         </form>
         </div>
 
-        {/* Action Buttons - Sticky for mobile */}
-        <div className="sticky bottom-0 flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 bg-white">
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 bg-white">
           <button
             type="button"
             onClick={handleClose}
