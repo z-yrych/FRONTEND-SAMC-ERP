@@ -24,6 +24,7 @@ export function useCreateProduct() {
       // Invalidate and refetch products lists
       queryClient.invalidateQueries({ queryKey: ['products'] })
       queryClient.invalidateQueries({ queryKey: ['products-list'] })
+      queryClient.invalidateQueries({ queryKey: ['products-with-stock'] })
     }
   })
 }

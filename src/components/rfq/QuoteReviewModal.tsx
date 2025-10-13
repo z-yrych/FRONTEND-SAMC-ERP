@@ -255,7 +255,7 @@ export function QuoteReviewModal({ isOpen, onClose, review }: QuoteReviewModalPr
                               className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
                             />
                           ) : (
-                            <p className="mt-1 text-sm font-medium text-gray-900">${item.unitCost.toFixed(2)}</p>
+                            <p className="mt-1 text-sm font-medium text-gray-900">₱{item.unitCost.toFixed(2)}</p>
                           )}
                         </div>
                         <div>
@@ -269,7 +269,7 @@ export function QuoteReviewModal({ isOpen, onClose, review }: QuoteReviewModalPr
                               className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
                             />
                           ) : (
-                            <p className="mt-1 text-sm font-medium text-gray-900">${item.totalCost.toFixed(2)}</p>
+                            <p className="mt-1 text-sm font-medium text-gray-900">₱{item.totalCost.toFixed(2)}</p>
                           )}
                         </div>
                         <div>

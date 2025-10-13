@@ -1,9 +1,10 @@
-import { X, Download, Mail } from 'lucide-react';
+import { useState } from 'react';
+import { X, Download, Mail, Loader2 } from 'lucide-react';
 
 interface SendClientQuoteMethodModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectMethod: (method: 'manual' | 'automatic') => void;
+  onSelectMethod: (method: 'manual' | 'automatic') => Promise<void>;
   clientName: string;
   clientEmail?: string;
   quoteNumber: string;
@@ -17,9 +18,20 @@ export function SendClientQuoteMethodModal({
   clientEmail,
   quoteNumber
 }: SendClientQuoteMethodModalProps) {
+  const [isProcessing, setIsProcessing] = useState(false);
+
   if (!isOpen) return null;
 
   const hasEmail = clientEmail && clientEmail.trim().length > 0;
+
+  const handleMethodSelection = async (method: 'manual' | 'automatic') => {
+    setIsProcessing(true);
+    try {
+      await onSelectMethod(method);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -42,15 +54,17 @@ export function SendClientQuoteMethodModal({
         <div className="p-6 space-y-4">
           {/* Option 1: Manual Sending */}
           <button
-            onClick={() => {
-              onSelectMethod('manual');
-              onClose();
-            }}
-            className="w-full p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
+            onClick={() => handleMethodSelection('manual')}
+            disabled={isProcessing}
+            className="w-full p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                <Download className="w-6 h-6 text-blue-600" />
+                {isProcessing ? (
+                  <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                ) : (
+                  <Download className="w-6 h-6 text-blue-600" />
+                )}
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -70,24 +84,27 @@ export function SendClientQuoteMethodModal({
           <button
             onClick={() => {
               if (hasEmail) {
-                onSelectMethod('automatic');
-                onClose();
+                handleMethodSelection('automatic');
               }
             }}
-            disabled={!hasEmail}
+            disabled={!hasEmail || isProcessing}
             className={`w-full p-6 border-2 rounded-lg transition-all text-left group ${
-              hasEmail
+              hasEmail && !isProcessing
                 ? 'border-gray-200 hover:border-green-500 hover:bg-green-50 cursor-pointer'
                 : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
             }`}
           >
             <div className="flex items-start gap-4">
               <div className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${
-                hasEmail
+                hasEmail && !isProcessing
                   ? 'bg-green-100 group-hover:bg-green-200'
                   : 'bg-gray-200'
               }`}>
-                <Mail className={`w-6 h-6 ${hasEmail ? 'text-green-600' : 'text-gray-400'}`} />
+                {isProcessing ? (
+                  <Loader2 className="w-6 h-6 text-green-600 animate-spin" />
+                ) : (
+                  <Mail className={`w-6 h-6 ${hasEmail ? 'text-green-600' : 'text-gray-400'}`} />
+                )}
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -121,7 +138,8 @@ export function SendClientQuoteMethodModal({
         <div className="flex justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            disabled={isProcessing}
+            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>

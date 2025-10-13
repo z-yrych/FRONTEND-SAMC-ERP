@@ -37,8 +37,8 @@ export function StartStockCountModal({ isOpen, onClose }: StartStockCountModalPr
       // Backend returns array directly, not wrapped in {data: []}
       const locationsData = Array.isArray(data) ? data : []
 
-      // Fetch batch counts for each location
-      const batchesResponse = await api.get('/inventory/batches')
+      // Fetch batch counts for each location (only batches with available quantity)
+      const batchesResponse = await api.get('/inventory/batches?available=true')
       const batchesData = batchesResponse.data
       const batches = Array.isArray(batchesData) ? batchesData : (batchesData.data || [])
 

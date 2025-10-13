@@ -118,6 +118,7 @@ export function IncompleteMasterDataModal({
       // Refresh incomplete products list
       queryClient.invalidateQueries({ queryKey: ['incomplete-products'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-with-stock'] });
       queryClient.invalidateQueries({ queryKey: ['master-data-incomplete-stats'] });
 
       setShowProductFormModal(false);
@@ -222,10 +223,10 @@ export function IncompleteMasterDataModal({
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex gap-4 mt-4 border-b border-gray-200">
+            <div className="flex gap-4 mt-4 border-b border-gray-200 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('products')}
-                className={`pb-3 px-2 text-sm font-medium transition-colors border-b-2 ${
+                className={`pb-3 px-2 text-sm font-medium transition-colors border-b-2 flex-shrink-0 ${
                   activeTab === 'products'
                     ? 'border-orange-500 text-orange-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -244,7 +245,7 @@ export function IncompleteMasterDataModal({
 
               <button
                 onClick={() => setActiveTab('suppliers')}
-                className={`pb-3 px-2 text-sm font-medium transition-colors border-b-2 ${
+                className={`pb-3 px-2 text-sm font-medium transition-colors border-b-2 flex-shrink-0 ${
                   activeTab === 'suppliers'
                     ? 'border-orange-500 text-orange-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -263,7 +264,7 @@ export function IncompleteMasterDataModal({
 
               <button
                 onClick={() => setActiveTab('clients')}
-                className={`pb-3 px-2 text-sm font-medium transition-colors border-b-2 ${
+                className={`pb-3 px-2 text-sm font-medium transition-colors border-b-2 flex-shrink-0 ${
                   activeTab === 'clients'
                     ? 'border-orange-500 text-orange-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'

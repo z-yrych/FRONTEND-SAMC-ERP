@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getProducts, createProduct, updateProduct, deleteProduct, type Product, type CreateProductDto, type UpdateProductDto } from '../../lib/api/products';
-import { Plus, Edit, Trash2, Package, X, TrendingUp } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, X, TrendingUp, Boxes } from 'lucide-react';
 import { showSuccess, showError } from '../../lib/toast';
 import { SearchInput } from '../common/SearchInput';
 import { useSearchFilter } from '../../hooks/useSearchFilter';
 import { FilterDropdown, type FilterOption } from '../common/FilterDropdown';
 import { PriceHistoryModal } from './PriceHistoryModal';
 import { ProductFormModal } from '../products/ProductFormModal';
+import { ProductBatchesModal } from '../inventory/ProductBatchesModal';
 
 interface ProductsManagementModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [priceHistoryProduct, setPriceHistoryProduct] = useState<Product | null>(null);
+  const [batchViewProduct, setBatchViewProduct] = useState<Product | null>(null);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products'],
@@ -66,6 +68,7 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
     mutationFn: createProduct,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-with-stock'] });
       setShowModal(false);
       showSuccess('Product created successfully!');
     },
@@ -79,6 +82,7 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
       updateProduct(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-with-stock'] });
       setShowModal(false);
       setEditingProduct(null);
       showSuccess('Product updated successfully!');
@@ -92,6 +96,7 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
     mutationFn: deleteProduct,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-with-stock'] });
       showSuccess('Product deleted successfully!');
     },
     onError: (error: any) => {
@@ -230,6 +235,13 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
                           <TrendingUp className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => setBatchViewProduct(product)}
+                          className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                          title="View Inventory Batches"
+                        >
+                          <Boxes className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleEdit(product)}
                           className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
                           title="Edit"
@@ -297,6 +309,16 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
           onClose={() => setPriceHistoryProduct(null)}
           productId={priceHistoryProduct.id}
           productName={priceHistoryProduct.name}
+        />
+      )}
+
+      {/* Inventory Batches Modal */}
+      {batchViewProduct && (
+        <ProductBatchesModal
+          isOpen={true}
+          onClose={() => setBatchViewProduct(null)}
+          productId={batchViewProduct.id}
+          productName={batchViewProduct.name}
         />
       )}
     </>

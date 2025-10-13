@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Plus, Loader2 } from 'lucide-react'
+import { useKeyboardAwareViewport } from '../../hooks/useKeyboardAwareViewport'
 
 interface Option {
   id: string
@@ -34,6 +35,7 @@ export function SmartComboBox({
   const [isCreating, setIsCreating] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const { scrollIntoView, isVisible: isKeyboardVisible } = useKeyboardAwareViewport()
 
   const filteredOptions = options.filter(option =>
     option.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -79,6 +81,15 @@ export function SmartComboBox({
     }
   }, [value])
 
+  // Scroll dropdown into view when keyboard appears
+  useEffect(() => {
+    if (isOpen && isKeyboardVisible && inputRef.current) {
+      setTimeout(() => {
+        scrollIntoView(inputRef.current!, 100)
+      }, 100)
+    }
+  }, [isOpen, isKeyboardVisible, scrollIntoView])
+
   return (
     <div className="relative" ref={dropdownRef}>
       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -91,7 +102,13 @@ export function SmartComboBox({
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          onFocus={() => !disabled && setIsOpen(true)}
+          onFocus={(e) => {
+            if (!disabled) {
+              setIsOpen(true)
+              // Select all text to allow easy replacement when changing selection
+              e.target.select()
+            }
+          }}
           placeholder={placeholder}
           required={required}
           disabled={disabled}

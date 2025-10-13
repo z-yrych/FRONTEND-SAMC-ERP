@@ -1,14 +1,17 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Camera, Package, MapPin, Calendar, Hash, AlertCircle, CheckCircle } from 'lucide-react'
 import { BarcodeScanner } from '../components/barcode/BarcodeScanner'
 import { useBatchScan } from '../hooks/useBatchScan'
+import { useKeyboardAwareViewport } from '../hooks/useKeyboardAwareViewport'
 
 export function BarcodeScannerPage() {
   const navigate = useNavigate()
   const [scannedCode, setScannedCode] = useState<string>('')
   const [manualCode, setManualCode] = useState('')
   const { data: batchDetails, isLoading, error } = useBatchScan(scannedCode)
+  const { isVisible: isKeyboardVisible } = useKeyboardAwareViewport()
+  const manualInputRef = useRef<HTMLInputElement>(null)
 
   const handleScan = (code: string) => {
     console.log('Scanned code:', code)
@@ -27,6 +30,18 @@ export function BarcodeScannerPage() {
     setScannedCode('')
     setManualCode('')
   }
+
+  // Scroll manual input into view when keyboard appears
+  useEffect(() => {
+    if (isKeyboardVisible && document.activeElement === manualInputRef.current) {
+      setTimeout(() => {
+        manualInputRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        })
+      }, 300)
+    }
+  }, [isKeyboardVisible])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -99,6 +114,7 @@ export function BarcodeScannerPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Manual Entry</h2>
               <form onSubmit={handleManualSubmit} className="space-y-3">
                 <input
+                  ref={manualInputRef}
                   type="text"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}

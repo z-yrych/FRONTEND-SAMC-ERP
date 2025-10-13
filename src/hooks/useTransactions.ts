@@ -24,7 +24,7 @@ export function useTransaction(id: string) {
     queryKey: ['transaction', id],
     queryFn: () => fetchTransaction(id),
     enabled: !!id,
-    staleTime: 30000
+    staleTime: 0  // Immediate refetch after invalidation (was 30000)
   })
 }
 

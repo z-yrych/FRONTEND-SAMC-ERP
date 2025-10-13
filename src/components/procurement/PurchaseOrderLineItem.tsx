@@ -48,7 +48,9 @@ export function PurchaseOrderLineItem({
   }
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const quantity = parseInt(e.target.value) || 0
+    const inputValue = e.target.value
+    // Allow empty input for better UX
+    const quantity = inputValue === '' ? 0 : parseInt(inputValue) || 0
     onChange(index, {
       ...value,
       quantity,
@@ -57,7 +59,9 @@ export function PurchaseOrderLineItem({
   }
 
   const handleUnitCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const unitCost = parseFloat(e.target.value) || 0
+    const inputValue = e.target.value
+    // Allow empty input for better UX
+    const unitCost = inputValue === '' ? 0 : parseFloat(inputValue) || 0
     onChange(index, {
       ...value,
       unitCost,
@@ -66,7 +70,9 @@ export function PurchaseOrderLineItem({
   }
 
   const handleTotalCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const totalCost = parseFloat(e.target.value) || 0
+    const inputValue = e.target.value
+    // Allow empty input for better UX
+    const totalCost = inputValue === '' ? 0 : parseFloat(inputValue) || 0
     const unitCost = value.quantity > 0 ? totalCost / value.quantity : 0
     onChange(index, {
       ...value,
@@ -119,6 +125,12 @@ export function PurchaseOrderLineItem({
             min="1"
             value={value.quantity || ''}
             onChange={handleQuantityChange}
+            onBlur={(e) => {
+              // Ensure valid value on blur
+              if (!e.target.value || parseInt(e.target.value) < 1) {
+                onChange(index, { ...value, quantity: 1, totalCost: 1 * value.unitCost })
+              }
+            }}
             placeholder="0"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
@@ -135,6 +147,12 @@ export function PurchaseOrderLineItem({
             step="0.01"
             value={value.unitCost || ''}
             onChange={handleUnitCostChange}
+            onBlur={(e) => {
+              // Ensure valid value on blur
+              if (!e.target.value) {
+                onChange(index, { ...value, unitCost: 0, totalCost: value.quantity * 0 })
+              }
+            }}
             placeholder="0.00"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
@@ -151,6 +169,12 @@ export function PurchaseOrderLineItem({
             step="0.01"
             value={value.totalCost || ''}
             onChange={handleTotalCostChange}
+            onBlur={(e) => {
+              // Ensure valid value on blur
+              if (!e.target.value) {
+                onChange(index, { ...value, totalCost: 0, unitCost: 0 })
+              }
+            }}
             placeholder="0.00"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />

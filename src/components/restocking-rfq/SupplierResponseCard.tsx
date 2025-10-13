@@ -6,7 +6,7 @@ import {
   TrendingUp,
   Building2,
   Calendar,
-  DollarSign,
+  Coins,
   Box,
   Tag,
   FileText,
@@ -54,8 +54,15 @@ export function SupplierResponseCard({
   };
 
   const handleCreatePO = () => {
+    console.log('🔵 SupplierResponseCard: handleCreatePO called');
+    console.log('🔵 selectedProductIds:', selectedProductIds);
+    console.log('🔵 response:', response);
+
     if (selectedProductIds.length > 0) {
+      console.log('🔵 Calling onCreatePO callback...');
       onCreatePO(response, selectedProductIds);
+    } else {
+      console.log('🔴 ERROR: No products selected!');
     }
   };
 
@@ -192,9 +199,9 @@ export function SupplierResponseCard({
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           {/* Unit Price */}
                           <div className="flex items-center gap-1.5 text-gray-600">
-                            <DollarSign className="w-3.5 h-3.5" />
+                            <Coins className="w-3.5 h-3.5" />
                             <span>
-                              ${quote.unitPrice?.toFixed(2) || '—'} / unit
+                              ₱{quote.unitPrice?.toFixed(2) || '—'} / unit
                             </span>
                           </div>
 
@@ -207,7 +214,7 @@ export function SupplierResponseCard({
                           {/* Total Price */}
                           <div className="flex items-center gap-1.5 text-gray-900 font-medium">
                             <Tag className="w-3.5 h-3.5" />
-                            <span>Total: ${quote.totalPrice?.toFixed(2) || '—'}</span>
+                            <span>Total: ₱{quote.totalPrice?.toFixed(2) || '—'}</span>
                           </div>
 
                           {/* Lead Time */}
@@ -311,7 +318,7 @@ export function SupplierResponseCard({
                     Selected Total:
                   </span>
                   <span className="text-lg font-bold text-gray-900">
-                    ${calculateTotal().toFixed(2)}
+                    ₱{calculateTotal().toFixed(2)}
                   </span>
                 </div>
                 <button

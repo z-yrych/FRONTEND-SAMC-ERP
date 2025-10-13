@@ -55,6 +55,10 @@ export function InventorySection() {
   }
 
   const handleMethodSelection = (method: 'direct_po' | 'rfq') => {
+    // Close the method modal first
+    setIsRestockingMethodModalOpen(false)
+
+    // Then open the appropriate modal based on the selected method
     if (method === 'direct_po') {
       setIsRestockModalOpen(true)
     } else if (method === 'rfq') {

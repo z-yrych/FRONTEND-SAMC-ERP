@@ -29,8 +29,15 @@ export function RestockingRFQDetailModal({
   if (!isOpen) return null;
 
   const handleCreatePO = (response: RestockingRFQResponse, selectedProductIds: string[]) => {
+    console.log('🟢 RestockingRFQDetailModal: handleCreatePO called');
+    console.log('🟢 response:', response);
+    console.log('🟢 selectedProductIds:', selectedProductIds);
+
     setSelectedResponse({ response, selectedProductIds });
+    console.log('🟢 State updated: selectedResponse set');
+
     setIsRestockModalOpen(true);
+    console.log('🟢 State updated: isRestockModalOpen = true');
   };
 
   const handleRestockModalClose = () => {

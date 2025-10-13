@@ -26,8 +26,13 @@ import { RestockingMethodModal } from '../restocking-rfq/RestockingMethodModal';
 import { RestockingRFQModal } from '../restocking-rfq/RestockingRFQModal';
 import { SendPurchaseOrdersModal } from '../procurement/SendPurchaseOrdersModal';
 import { ReceivePurchaseOrdersModal } from '../procurement/ReceivePurchaseOrdersModal';
+import { ConfirmPOSentModal } from '../procurement/ConfirmPOSentModal';
+import { TransactionPOActionsModal } from '../procurement/TransactionPOActionsModal';
 import { IncompleteMasterDataModal } from '../masterdata/IncompleteMasterDataModal';
 import { SetAlertLevelsModal } from '../products/SetAlertLevelsModal';
+import { TransactionActionsModal } from '../transactions/TransactionActionsModal';
+import { AllocationOpportunitiesModal } from '../inventory/AllocationOpportunitiesModal';
+import type { TransactionActionType } from '../../lib/api/transactions';
 
 interface TodoItem {
   id: string;
@@ -59,6 +64,13 @@ export function ActionItemsTodoList() {
   const [isRestockingRFQModalOpen, setIsRestockingRFQModalOpen] = useState(false);
   const [isIncompleteMasterDataModalOpen, setIsIncompleteMasterDataModalOpen] = useState(false);
   const [isSetAlertLevelsModalOpen, setIsSetAlertLevelsModalOpen] = useState(false);
+  const [isTransactionActionsModalOpen, setIsTransactionActionsModalOpen] = useState(false);
+  const [selectedActionType, setSelectedActionType] = useState<TransactionActionType | null>(null);
+  const [isConfirmPOModalOpen, setIsConfirmPOModalOpen] = useState(false);
+  const [selectedPOForConfirm, setSelectedPOForConfirm] = useState<any>(null);
+  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
+  const [isConfirmTransactionPOsModalOpen, setIsConfirmTransactionPOsModalOpen] = useState(false);
+  const [isReceiveTransactionPOsModalOpen, setIsReceiveTransactionPOsModalOpen] = useState(false);
 
   // Fetch all data sources
   const { data: lowStockProducts = [] } = useQuery({
@@ -133,6 +145,24 @@ export function ActionItemsTodoList() {
     refetchInterval: 60000,
   });
 
+  const { data: posNeedingFollowUp = [] } = useQuery({
+    queryKey: ['pos-needs-followup'],
+    queryFn: async () => {
+      const response = await api.get('/purchase-orders/needs-followup');
+      return response.data;
+    },
+    refetchInterval: 60000,
+  });
+
+  const { data: allocationStats } = useQuery({
+    queryKey: ['allocation-opportunities-stats'],
+    queryFn: async () => {
+      const response = await api.get('/inventory/allocation-opportunities/stats');
+      return response.data;
+    },
+    refetchInterval: 60000,
+  });
+
   // Helper to scroll to section smoothly
   const scrollToSection = (sectionName: string) => {
     const element = document.querySelector(`[data-section="${sectionName}"]`);
@@ -141,10 +171,18 @@ export function ActionItemsTodoList() {
     }
   };
 
+  // Helper to open transaction actions modal
+  const openTransactionActionsModal = (actionType: TransactionActionType) => {
+    setSelectedActionType(actionType);
+    setIsTransactionActionsModalOpen(true);
+  };
+
   // Handle restocking method selection for out-of-stock items
   const handleRestockMethodSelection = (method: 'direct_po' | 'rfq') => {
+    // Close the method modal first
     setIsRestockingMethodModalOpen(false);
 
+    // Then open the appropriate modal based on the selected method
     if (method === 'direct_po') {
       setIsRestockModalOpen(true);
     } else if (method === 'rfq') {
@@ -185,18 +223,21 @@ export function ActionItemsTodoList() {
 
   // Critical: Overdue Payments
   if (transactionStats?.paymentsOverdue && transactionStats.paymentsOverdue > 0) {
+    const overdueAmount = transactionStats.paymentsOverdueAmount || 0;
+    const formattedAmount = overdueAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     todoItems.push({
       id: 'transaction-overdue-payments',
       type: 'transaction',
       priority: 'critical',
       title: '⚠️ Overdue Payments',
-      description: `${transactionStats!.paymentsOverdue} payment${transactionStats!.paymentsOverdue !== 1 ? 's' : ''} past due - immediate collection required`,
+      description: `${transactionStats!.paymentsOverdue} payment${transactionStats!.paymentsOverdue !== 1 ? 's' : ''} past due totaling ₱${formattedAmount} - immediate collection required`,
       count: transactionStats!.paymentsOverdue,
       icon: DollarSign,
       iconColor: 'text-red-600',
       bgColor: 'bg-red-50',
       borderColor: 'border-red-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('payments_overdue'),
       actionLabel: 'View',
     });
   }
@@ -299,6 +340,61 @@ export function ActionItemsTodoList() {
     });
   }
 
+  // High: Stock Allocation Opportunities (NEW - Manual Allocation Feature)
+  if (allocationStats?.pendingOpportunities > 0) {
+    todoItems.push({
+      id: 'allocation-opportunities',
+      type: 'procurement',
+      priority: 'high',
+      title: '🎯 Allocate Received Stock',
+      description: `${allocationStats.pendingOpportunities} stock allocation${allocationStats.pendingOpportunities !== 1 ? 's' : ''} awaiting your review - ${allocationStats.waitingTransactions} transaction${allocationStats.waitingTransactions !== 1 ? 's' : ''} waiting`,
+      count: allocationStats.pendingOpportunities,
+      icon: Package,
+      iconColor: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-500',
+      action: () => setIsAllocationModalOpen(true),
+      actionLabel: 'Review',
+    });
+  }
+
+  // High: Downloaded POs Needing Confirmation
+  posNeedingFollowUp.forEach((po: any) => {
+    const calculateHoursSince = (dateString: string) => {
+      const now = new Date();
+      const downloaded = new Date(dateString);
+      return Math.floor((now.getTime() - downloaded.getTime()) / (1000 * 60 * 60));
+    };
+
+    const formatTimeAgo = (dateString: string) => {
+      const hours = calculateHoursSince(dateString);
+      const days = Math.floor(hours / 24);
+      if (days > 0) return `${days}d ago`;
+      if (hours > 0) return `${hours}h ago`;
+      return 'Just now';
+    };
+
+    const hoursSinceDownload = po.lastDownloadedAt ? calculateHoursSince(po.lastDownloadedAt) : 0;
+
+    todoItems.push({
+      id: `po-confirm-sent-${po.id}`,
+      type: 'procurement',
+      priority: hoursSinceDownload > 48 ? 'high' : 'medium',
+      title: `Did you send PO ${po.poNumber}?`,
+      description: `Downloaded ${formatTimeAgo(po.lastDownloadedAt)} for ${po.supplier?.name || 'supplier'}`,
+      icon: AlertTriangle,
+      iconColor: hoursSinceDownload > 48 ? 'text-orange-600' : 'text-yellow-600',
+      bgColor: hoursSinceDownload > 48 ? 'bg-orange-50' : 'bg-yellow-50',
+      borderColor: hoursSinceDownload > 48 ? 'border-orange-500' : 'border-yellow-500',
+      action: () => {
+        setSelectedPOForConfirm(po);
+        setIsConfirmPOModalOpen(true);
+      },
+      actionLabel: 'Confirm',
+      metadata: { po }
+    });
+  });
+
   // High: Quotes Expiring Soon
   if (transactionStats?.quotesExpiringSoon && transactionStats.quotesExpiringSoon > 0) {
     todoItems.push({
@@ -312,7 +408,7 @@ export function ActionItemsTodoList() {
       iconColor: 'text-amber-600',
       bgColor: 'bg-amber-50',
       borderColor: 'border-amber-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('quotes_expiring_soon'),
       actionLabel: 'Follow Up',
     });
   }
@@ -438,7 +534,7 @@ export function ActionItemsTodoList() {
       iconColor: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
       borderColor: 'border-yellow-500',
-      action: () => scrollToSection('transactions'),
+      action: () => setIsConfirmTransactionPOsModalOpen(true),
       actionLabel: 'View',
     });
   }
@@ -456,7 +552,7 @@ export function ActionItemsTodoList() {
       iconColor: 'text-green-600',
       bgColor: 'bg-green-50',
       borderColor: 'border-green-500',
-      action: () => scrollToSection('transactions'),
+      action: () => setIsReceiveTransactionPOsModalOpen(true),
       actionLabel: 'Receive',
     });
   }
@@ -474,7 +570,7 @@ export function ActionItemsTodoList() {
       iconColor: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
       borderColor: 'border-indigo-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('need_client_quotes'),
       actionLabel: 'View',
     });
   }
@@ -492,8 +588,26 @@ export function ActionItemsTodoList() {
       iconColor: 'text-purple-600',
       bgColor: 'bg-purple-50',
       borderColor: 'border-purple-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('need_sourcing'),
       actionLabel: 'Source',
+    });
+  }
+
+  // Medium: Transactions - Waiting for Restocking POs
+  if (transactionStats?.waitingForRestockingPOs && transactionStats.waitingForRestockingPOs > 0) {
+    todoItems.push({
+      id: 'transaction-waiting-restocking',
+      type: 'transaction',
+      priority: 'medium',
+      title: '⏳ Transactions Waiting for Restocking',
+      description: `${transactionStats!.waitingForRestockingPOs} transaction${transactionStats!.waitingForRestockingPOs !== 1 ? 's are' : ' is'} waiting for pending restocking POs to arrive`,
+      count: transactionStats!.waitingForRestockingPOs,
+      icon: Clock,
+      iconColor: 'text-cyan-600',
+      bgColor: 'bg-cyan-50',
+      borderColor: 'border-cyan-500',
+      action: () => openTransactionActionsModal('waiting_for_restocking'),
+      actionLabel: 'View',
     });
   }
 
@@ -510,7 +624,7 @@ export function ActionItemsTodoList() {
       iconColor: 'text-purple-600',
       bgColor: 'bg-purple-50',
       borderColor: 'border-purple-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('quotes_can_be_sent'),
       actionLabel: 'View',
     });
   }
@@ -528,7 +642,7 @@ export function ActionItemsTodoList() {
       iconColor: 'text-green-600',
       bgColor: 'bg-green-50',
       borderColor: 'border-green-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('quotes_can_be_accepted'),
       actionLabel: 'View',
     });
   }
@@ -546,7 +660,7 @@ export function ActionItemsTodoList() {
       iconColor: 'text-blue-600',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('can_ship'),
       actionLabel: 'View',
     });
   }
@@ -564,61 +678,70 @@ export function ActionItemsTodoList() {
       iconColor: 'text-teal-600',
       bgColor: 'bg-teal-50',
       borderColor: 'border-teal-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('can_deliver'),
       actionLabel: 'View',
     });
   }
 
   // Medium: Transactions - Generate Invoices
   if (transactionStats?.canGenerateInvoice && transactionStats.canGenerateInvoice > 0) {
+    const invoiceAmount = transactionStats.canGenerateInvoiceAmount || 0;
+    const formattedAmount = invoiceAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     todoItems.push({
       id: 'transaction-generate-invoice',
       type: 'transaction',
       priority: 'medium',
       title: 'Generate Invoices',
-      description: `${transactionStats!.canGenerateInvoice} delivered order${transactionStats!.canGenerateInvoice !== 1 ? 's' : ''} ready for invoicing`,
+      description: `${transactionStats!.canGenerateInvoice} delivered order${transactionStats!.canGenerateInvoice !== 1 ? 's' : ''} ready for invoicing (₱${formattedAmount})`,
       count: transactionStats!.canGenerateInvoice,
       icon: DollarSign,
       iconColor: 'text-orange-600',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('can_generate_invoice'),
       actionLabel: 'View',
     });
   }
 
   // Medium: Transactions - Send Invoices
   if (transactionStats?.canSendInvoice && transactionStats.canSendInvoice > 0) {
+    const sendInvoiceAmount = transactionStats.canSendInvoiceAmount || 0;
+    const formattedAmount = sendInvoiceAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     todoItems.push({
       id: 'transaction-send-invoice',
       type: 'transaction',
       priority: 'medium',
       title: 'Send Invoices',
-      description: `${transactionStats!.canSendInvoice} draft invoice${transactionStats!.canSendInvoice !== 1 ? 's' : ''} ready to send`,
+      description: `${transactionStats!.canSendInvoice} draft invoice${transactionStats!.canSendInvoice !== 1 ? 's' : ''} ready to send (₱${formattedAmount})`,
       count: transactionStats!.canSendInvoice,
       icon: Send,
       iconColor: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
       borderColor: 'border-yellow-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('can_send_invoice'),
       actionLabel: 'View',
     });
   }
 
   // Medium: Payments Due Today
   if (transactionStats?.paymentsDueToday && transactionStats.paymentsDueToday > 0) {
+    const paymentsDueTodayAmount = transactionStats.paymentsDueTodayAmount || 0;
+    const formattedAmount = paymentsDueTodayAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     todoItems.push({
       id: 'transaction-payments-due',
       type: 'transaction',
       priority: 'medium',
       title: 'Payments Due Today',
-      description: `${transactionStats!.paymentsDueToday} payment${transactionStats!.paymentsDueToday !== 1 ? 's' : ''} due today`,
+      description: `${transactionStats!.paymentsDueToday} payment${transactionStats!.paymentsDueToday !== 1 ? 's' : ''} due today totaling ₱${formattedAmount}`,
       count: transactionStats!.paymentsDueToday,
       icon: Clock,
       iconColor: 'text-orange-600',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-500',
-      action: () => scrollToSection('transactions'),
+      action: () => openTransactionActionsModal('payments_due_today'),
       actionLabel: 'View',
     });
   }
@@ -881,21 +1004,20 @@ export function ActionItemsTodoList() {
       )}
 
       {/* Restocking RFQ Modal */}
-      {isRestockingRFQModalOpen && selectedProduct && (
-        <RestockingRFQModal
-          isOpen={isRestockingRFQModalOpen}
-          onClose={() => {
-            setIsRestockingRFQModalOpen(false);
-            setSelectedProduct(null);
-          }}
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['restocking-rfq-stats'] });
-            queryClient.invalidateQueries({ queryKey: ['restocking-rfqs'] });
-            setIsRestockingRFQModalOpen(false);
-            setSelectedProduct(null);
-          }}
-        />
-      )}
+      <RestockingRFQModal
+        isOpen={isRestockingRFQModalOpen}
+        onClose={() => {
+          setIsRestockingRFQModalOpen(false);
+          setSelectedProduct(null);
+        }}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['restocking-rfq-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['restocking-rfqs'] });
+          setIsRestockingRFQModalOpen(false);
+          setSelectedProduct(null);
+        }}
+        prefilledProduct={selectedProduct || undefined}
+      />
 
       {/* Incomplete Master Data Modal */}
       <IncompleteMasterDataModal
@@ -908,6 +1030,61 @@ export function ActionItemsTodoList() {
       <SetAlertLevelsModal
         isOpen={isSetAlertLevelsModalOpen}
         onClose={() => setIsSetAlertLevelsModalOpen(false)}
+      />
+
+      {/* Transaction Actions Modal */}
+      <TransactionActionsModal
+        isOpen={isTransactionActionsModalOpen}
+        onClose={() => {
+          setIsTransactionActionsModalOpen(false);
+          setSelectedActionType(null);
+        }}
+        actionType={selectedActionType}
+      />
+
+      {/* Confirm PO Sent Modal */}
+      {selectedPOForConfirm && (
+        <ConfirmPOSentModal
+          isOpen={isConfirmPOModalOpen}
+          onClose={() => {
+            setIsConfirmPOModalOpen(false);
+            setSelectedPOForConfirm(null);
+          }}
+          purchaseOrder={selectedPOForConfirm}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['pos-needs-followup'] });
+            queryClient.invalidateQueries({ queryKey: ['restocking-po-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['transaction-fulfillment-po-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+            queryClient.invalidateQueries({ queryKey: ['restocking-rfq-stats'] });
+          }}
+        />
+      )}
+
+      {/* Allocation Opportunities Modal */}
+      <AllocationOpportunitiesModal
+        isOpen={isAllocationModalOpen}
+        onClose={() => setIsAllocationModalOpen(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['allocation-opportunities-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['transaction-overview-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
+          queryClient.invalidateQueries({ queryKey: ['products', 'low-stock'] });
+          setIsAllocationModalOpen(false);
+        }}
+      />
+
+      {/* Transaction PO Actions Modals */}
+      <TransactionPOActionsModal
+        isOpen={isConfirmTransactionPOsModalOpen}
+        onClose={() => setIsConfirmTransactionPOsModalOpen(false)}
+        mode="confirm"
+      />
+
+      <TransactionPOActionsModal
+        isOpen={isReceiveTransactionPOsModalOpen}
+        onClose={() => setIsReceiveTransactionPOsModalOpen(false)}
+        mode="receive"
       />
     </>
   );

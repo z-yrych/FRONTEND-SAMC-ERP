@@ -31,7 +31,7 @@ export function InvoiceGenerationModal({
   paymentSchemeAnalysis
 }: InvoiceGenerationModalProps) {
   const [paymentScheme, setPaymentScheme] = useState('immediate');
-  const [taxRate, setTaxRate] = useState(0);
+  const [taxRate, setTaxRate] = useState(12); // Default 12% VAT (Philippines)
   const [shippingCost, setShippingCost] = useState(0);
   const [notes, setNotes] = useState('');
   const [dueDate, setDueDate] = useState('');

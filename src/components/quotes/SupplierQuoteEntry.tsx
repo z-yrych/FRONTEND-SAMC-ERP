@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
-import { X, Save, Plus, Trash2 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { X, Save, Plus, Trash2, Search, ChevronDown } from 'lucide-react'
 import type { Transaction, TransactionLineItem } from '../../lib/api/transactions'
-import type { Supplier } from '../../lib/api/suppliers'
+import type { Supplier, CreateSupplierDto } from '../../lib/api/suppliers'
 import type { CreateSupplierQuoteDto } from '../../lib/api/quotes'
+import { SupplierFormModal } from '../masterdata/SupplierFormModal'
+import { useCreateSupplier } from '../../hooks/useSuppliers'
 
 interface LineItemQuote {
   lineItemId: string
@@ -35,13 +37,25 @@ export function SupplierQuoteEntry({
   multiMode = true  // Default to multi-mode
 }: SupplierQuoteEntryProps) {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
-  const [newSupplierName, setNewSupplierName] = useState('')
-  const [useNewSupplier, setUseNewSupplier] = useState(false)
   const [leadTimeDays, setLeadTimeDays] = useState<number>(7)
   const [shippingCost, setShippingCost] = useState<number>(0)
   const [validUntil, setValidUntil] = useState('')
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Searchable dropdown states
+  const [supplierSearchQuery, setSupplierSearchQuery] = useState('')
+  const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false)
+  const [productSearchQuery, setProductSearchQuery] = useState('')
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false)
+  const [isAddSupplierModalOpen, setIsAddSupplierModalOpen] = useState(false)
+
+  // Refs for click-outside detection
+  const supplierDropdownRef = useRef<HTMLDivElement>(null)
+  const productDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Supplier creation hook
+  const createSupplierMutation = useCreateSupplier()
 
   // For multi-mode: array of line items
   const [lineItemQuotes, setLineItemQuotes] = useState<LineItemQuote[]>([])
@@ -72,16 +86,49 @@ export function SupplierQuoteEntry({
   const availableLineItems = transaction.lineItems
     .filter(item => item.requiresSourcing)
 
-  const handleSupplierChange = (supplierId: string) => {
-    if (supplierId === 'new') {
-      setUseNewSupplier(true)
-      setSelectedSupplier(null)
-    } else {
-      setUseNewSupplier(false)
-      const supplier = suppliers.find(s => s.id === supplierId)
-      setSelectedSupplier(supplier || null)
+  // Filter suppliers based on search query
+  const filteredSuppliers = suppliers.filter(supplier =>
+    supplier.name.toLowerCase().includes(supplierSearchQuery.toLowerCase())
+  )
+
+  // Filter line items based on search query
+  const filteredLineItems = availableLineItems.filter(item =>
+    item.product.name.toLowerCase().includes(productSearchQuery.toLowerCase())
+  )
+
+  const handleSupplierSelect = (supplier: Supplier) => {
+    setSelectedSupplier(supplier)
+    setSupplierSearchQuery(supplier.name)
+    setIsSupplierDropdownOpen(false)
+  }
+
+  const handleCreateSupplier = async (supplierData: CreateSupplierDto) => {
+    try {
+      const newSupplier = await createSupplierMutation.mutateAsync(supplierData)
+      // Automatically select the newly created supplier
+      setSelectedSupplier(newSupplier)
+      setSupplierSearchQuery(newSupplier.name)
+      setIsAddSupplierModalOpen(false)
+    } catch (error) {
+      console.error('Failed to create supplier:', error)
+      // Error handling is done by the mutation
     }
   }
+
+  // Click-outside detection
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(event.target as Node)) {
+        setIsSupplierDropdownOpen(false)
+      }
+      if (productDropdownRef.current && !productDropdownRef.current.contains(event.target as Node)) {
+        setIsProductDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleAddLineItem = () => {
     if (!selectedLineItemId) return
@@ -109,6 +156,14 @@ export function SupplierQuoteEntry({
     ])
 
     setSelectedLineItemId('')
+    setProductSearchQuery('')
+    setIsProductDropdownOpen(false)
+  }
+
+  const handleProductSelect = (lineItemId: string, productName: string) => {
+    setSelectedLineItemId(lineItemId)
+    setProductSearchQuery(productName)
+    setIsProductDropdownOpen(false)
   }
 
   const handleUpdateQuoteItem = (index: number, updates: Partial<LineItemQuote>) => {
@@ -122,7 +177,10 @@ export function SupplierQuoteEntry({
   }
 
   const handleSubmit = async () => {
-    if (!selectedSupplier && !newSupplierName) return
+    if (!selectedSupplier) {
+      alert('Please select a supplier')
+      return
+    }
 
     setIsSubmitting(true)
     try {
@@ -148,10 +206,7 @@ export function SupplierQuoteEntry({
           shippingCost: shippingCost || undefined,
           validUntil: validUntil || undefined,
           notes: notes || undefined,
-          ...(useNewSupplier
-            ? { supplierName: newSupplierName }
-            : { supplierId: selectedSupplier!.id }
-          )
+          supplierId: selectedSupplier.id
         }))
 
         await onSubmit(quotesData)
@@ -171,10 +226,7 @@ export function SupplierQuoteEntry({
           shippingCost: shippingCost || undefined,
           validUntil: validUntil || undefined,
           notes: notes || undefined,
-          ...(useNewSupplier
-            ? { supplierName: newSupplierName }
-            : { supplierId: selectedSupplier!.id }
-          )
+          supplierId: selectedSupplier.id
         }
 
         await onSubmit(quoteData)
@@ -230,66 +282,113 @@ export function SupplierQuoteEntry({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* Supplier Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Supplier
-            </label>
-            <select
-              value={useNewSupplier ? 'new' : (selectedSupplier?.id || '')}
-              onChange={(e) => handleSupplierChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            >
-              <option value="">Select supplier...</option>
-              {suppliers.map(supplier => (
-                <option key={supplier.id} value={supplier.id}>
-                  {supplier.name}
-                </option>
-              ))}
-              <option value="new">+ Add New Supplier</option>
-            </select>
+          <div ref={supplierDropdownRef}>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Supplier
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsAddSupplierModalOpen(true)}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                Add New Supplier
+              </button>
+            </div>
 
-            {useNewSupplier && (
-              <input
-                type="text"
-                value={newSupplierName}
-                onChange={(e) => setNewSupplierName(e.target.value)}
-                placeholder="Enter new supplier name"
-                className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            )}
+            <div className="relative">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={supplierSearchQuery}
+                  onChange={(e) => setSupplierSearchQuery(e.target.value)}
+                  onFocus={() => setIsSupplierDropdownOpen(true)}
+                  placeholder="Search suppliers..."
+                  className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              </div>
+
+              {isSupplierDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                  {filteredSuppliers.length > 0 ? (
+                    filteredSuppliers.map((supplier) => (
+                      <button
+                        key={supplier.id}
+                        type="button"
+                        onClick={() => handleSupplierSelect(supplier)}
+                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 text-sm"
+                      >
+                        {supplier.name}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-500">
+                      No suppliers found
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {multiMode ? (
             <>
               {/* Multi-mode: Add Line Items */}
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-gray-50 rounded-lg p-4" ref={productDropdownRef}>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Add Products to Quote
                 </label>
                 <div className="flex gap-2">
-                  <select
-                    value={selectedLineItemId}
-                    onChange={(e) => setSelectedLineItemId(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select a product...</option>
-                    {availableLineItems.map(item => {
-                      const sourcingInfo = sourcingAnalysis?.lineItems?.find(
-                        (si: any) => si.lineItemId === item.id
-                      )
-                      const inventoryAvailable = sourcingInfo?.inventoryAvailable || 0
-                      const quantityToSource = item.quantity - inventoryAvailable
+                  <div className="flex-1 relative">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={productSearchQuery}
+                        onChange={(e) => setProductSearchQuery(e.target.value)}
+                        onFocus={() => setIsProductDropdownOpen(true)}
+                        placeholder="Search products..."
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    </div>
 
-                      return (
-                        <option key={item.id} value={item.id}>
-                          {item.product.name} - Need {quantityToSource > 0 ? quantityToSource : item.quantity} units
-                          {inventoryAvailable > 0 && ` (${inventoryAvailable} in stock, ${item.quantity} total)`}
-                        </option>
-                      )
-                    })}
-                  </select>
+                    {isProductDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        {filteredLineItems.length > 0 ? (
+                          filteredLineItems.map(item => {
+                            const sourcingInfo = sourcingAnalysis?.lineItems?.find(
+                              (si: any) => si.lineItemId === item.id
+                            )
+                            const inventoryAvailable = sourcingInfo?.inventoryAvailable || 0
+                            const quantityToSource = item.quantity - inventoryAvailable
+
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => handleProductSelect(item.id, item.product.name)}
+                                className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="font-medium text-sm text-gray-900">{item.product.name}</div>
+                                <div className="text-xs text-gray-600">
+                                  Need {quantityToSource > 0 ? quantityToSource : item.quantity} units
+                                  {inventoryAvailable > 0 && ` (${inventoryAvailable} in stock, ${item.quantity} total)`}
+                                </div>
+                              </button>
+                            )
+                          })
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-gray-500">
+                            No products found
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={handleAddLineItem}
                     disabled={!selectedLineItemId}
@@ -325,8 +424,16 @@ export function SupplierQuoteEntry({
                             <td className="px-4 py-3">
                               <input
                                 type="number"
-                                value={item.unitCost}
-                                onChange={(e) => handleUpdateQuoteItem(index, { unitCost: parseFloat(e.target.value) || 0 })}
+                                value={item.unitCost || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                                  handleUpdateQuoteItem(index, { unitCost: value })
+                                }}
+                                onBlur={(e) => {
+                                  if (!e.target.value) {
+                                    handleUpdateQuoteItem(index, { unitCost: 0 })
+                                  }
+                                }}
                                 className="w-24 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                                 min="0"
                                 step="0.01"
@@ -335,8 +442,16 @@ export function SupplierQuoteEntry({
                             <td className="px-4 py-3">
                               <input
                                 type="number"
-                                value={item.quantity}
-                                onChange={(e) => handleUpdateQuoteItem(index, { quantity: parseInt(e.target.value) || 0 })}
+                                value={item.quantity || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? item.quantityToSource : (parseInt(e.target.value) || item.quantityToSource)
+                                  handleUpdateQuoteItem(index, { quantity: value })
+                                }}
+                                onBlur={(e) => {
+                                  if (!e.target.value || parseInt(e.target.value) < 1) {
+                                    handleUpdateQuoteItem(index, { quantity: item.quantityToSource || 1 })
+                                  }
+                                }}
                                 className="w-20 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                                 min="1"
                               />
@@ -423,8 +538,14 @@ export function SupplierQuoteEntry({
                   </label>
                   <input
                     type="number"
-                    value={singleUnitCost}
-                    onChange={(e) => setSingleUnitCost(parseFloat(e.target.value) || 0)}
+                    value={singleUnitCost || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                      setSingleUnitCost(value)
+                    }}
+                    onBlur={(e) => {
+                      if (!e.target.value) setSingleUnitCost(0)
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     min="0"
                     step="0.01"
@@ -438,8 +559,16 @@ export function SupplierQuoteEntry({
                   </label>
                   <input
                     type="number"
-                    value={singleQuantity}
-                    onChange={(e) => setSingleQuantity(parseInt(e.target.value) || 1)}
+                    value={singleQuantity || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 1 : parseInt(e.target.value) || 1
+                      setSingleQuantity(value)
+                    }}
+                    onBlur={(e) => {
+                      if (!e.target.value || parseInt(e.target.value) < 1) {
+                        setSingleQuantity(1)
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     min="1"
                     required
@@ -462,8 +591,14 @@ export function SupplierQuoteEntry({
               </label>
               <input
                 type="number"
-                value={leadTimeDays}
-                onChange={(e) => setLeadTimeDays(parseInt(e.target.value) || 0)}
+                value={leadTimeDays || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                  setLeadTimeDays(value)
+                }}
+                onBlur={(e) => {
+                  if (!e.target.value) setLeadTimeDays(0)
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="0"
               />
@@ -475,8 +610,14 @@ export function SupplierQuoteEntry({
               </label>
               <input
                 type="number"
-                value={shippingCost}
-                onChange={(e) => setShippingCost(parseFloat(e.target.value) || 0)}
+                value={shippingCost || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                  setShippingCost(value)
+                }}
+                onBlur={(e) => {
+                  if (!e.target.value) setShippingCost(0)
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="0"
                 step="0.01"
@@ -571,7 +712,7 @@ export function SupplierQuoteEntry({
             onClick={handleSubmit}
             disabled={
               isSubmitting ||
-              (!selectedSupplier && !newSupplierName) ||
+              !selectedSupplier ||
               (multiMode ? lineItemQuotes.length === 0 : !selectedLineItemId || singleUnitCost <= 0)
             }
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -581,6 +722,16 @@ export function SupplierQuoteEntry({
           </button>
         </div>
       </div>
+
+      {/* Add Supplier Modal */}
+      {isAddSupplierModalOpen && (
+        <SupplierFormModal
+          supplier={null}
+          onClose={() => setIsAddSupplierModalOpen(false)}
+          onSubmit={handleCreateSupplier}
+          isSubmitting={createSupplierMutation.isPending}
+        />
+      )}
     </div>
   )
 }

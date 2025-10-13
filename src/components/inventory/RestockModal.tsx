@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { X, Plus } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { SmartComboBox } from '../ui/SmartComboBox'
 import { PurchaseOrderLineItem, type LineItem } from '../procurement/PurchaseOrderLineItem'
 import { useCreateRestockingPO } from '../../hooks/useProcurement'
 import { useSuppliers, useCreateSupplier } from '../../hooks/useSuppliers'
 import { useProductsWithStock, useCreateProduct } from '../../hooks/useProductManagement'
-import type { Supplier } from '../../lib/api/suppliers'
+import { SupplierFormModal } from '../masterdata/SupplierFormModal'
+import { showSuccess, showError } from '../../lib/toast'
+import type { Supplier, CreateSupplierDto } from '../../lib/api/suppliers'
 import type { Product } from '../../lib/api/products'
 
 interface RestockModalProps {
@@ -27,6 +30,7 @@ export function RestockModal({
   prefilledLineItems,
   sourceRFQResponseId
 }: RestockModalProps) {
+  const queryClient = useQueryClient()
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('')
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -35,6 +39,7 @@ export function RestockModal({
   const [notes, setNotes] = useState('')
   const [shippingCost, setShippingCost] = useState(0)
   const [taxAmount, setTaxAmount] = useState(0)
+  const [showSupplierModal, setShowSupplierModal] = useState(false)
 
   const { data: suppliers = [] } = useSuppliers()
   const { data: allProducts = [] } = useProductsWithStock()
@@ -44,12 +49,21 @@ export function RestockModal({
 
   // Pre-fill from RFQ response (takes priority)
   useEffect(() => {
+    console.log('🟡 RestockModal: useEffect triggered');
+    console.log('🟡 isOpen:', isOpen);
+    console.log('🟡 prefilledSupplier:', prefilledSupplier);
+    console.log('🟡 prefilledLineItems:', prefilledLineItems);
+    console.log('🟡 sourceRFQResponseId:', sourceRFQResponseId);
+
     if (isOpen && prefilledSupplier) {
+      console.log('🟡 Setting supplier from prefill');
       setSelectedSupplier(prefilledSupplier)
     }
     if (isOpen && prefilledLineItems && prefilledLineItems.length > 0) {
+      console.log('🟡 Setting line items from prefill');
       setLineItems(prefilledLineItems)
     } else if (isOpen && prefilledProduct) {
+      console.log('🟡 Setting line items from single product prefill');
       // Fallback to single product prefill (original behavior)
       setLineItems([{
         productId: prefilledProduct.id,
@@ -61,7 +75,12 @@ export function RestockModal({
     }
   }, [isOpen, prefilledProduct, prefilledSupplier, prefilledLineItems])
 
-  if (!isOpen) return null
+  if (!isOpen) {
+    console.log('🟡 RestockModal: Not rendering (isOpen = false)');
+    return null;
+  }
+
+  console.log('🟡 RestockModal: Rendering!');
 
   // Filter to only show stocked products and add stock to Product type
   const stockedProducts = allProducts
@@ -79,6 +98,25 @@ export function RestockModal({
     const newSupplier = await createSupplierMutation.mutateAsync({ name })
     setSelectedSupplier(newSupplier)
     return { id: newSupplier.id, name: newSupplier.name }
+  }
+
+  const handleCreateSupplierWithDetails = async (data: CreateSupplierDto) => {
+    try {
+      const newSupplier = await createSupplierMutation.mutateAsync(data)
+
+      // Refetch suppliers cache to ensure the dropdown updates immediately
+      await queryClient.refetchQueries({ queryKey: ['suppliers'] })
+
+      showSuccess(`Supplier "${newSupplier.name}" created successfully!`)
+
+      // Auto-select the newly created supplier
+      setSelectedSupplier(newSupplier)
+
+      setShowSupplierModal(false)
+    } catch (error: any) {
+      showError(error?.response?.data?.message || 'Failed to create supplier')
+      throw error
+    }
   }
 
   const handleProductCreate = async (name: string): Promise<{ id: string; name: string }> => {
@@ -229,15 +267,30 @@ export function RestockModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Supplier */}
             <div>
-              <SmartComboBox
-                label="Supplier"
-                placeholder="Search existing suppliers or type to create new..."
-                options={suppliers.map(s => ({ id: s.id, name: s.name }))}
-                onSelect={handleSupplierSelect}
-                onCreate={handleSupplierCreate}
-                value={selectedSupplier}
-                disabled={!!prefilledSupplier}
-              />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1">
+                  <SmartComboBox
+                    label="Supplier"
+                    placeholder="Search existing suppliers or type to create new..."
+                    options={suppliers.map(s => ({ id: s.id, name: s.name }))}
+                    onSelect={handleSupplierSelect}
+                    onCreate={handleSupplierCreate}
+                    value={selectedSupplier}
+                    disabled={!!prefilledSupplier}
+                  />
+                </div>
+                {!prefilledSupplier && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSupplierModal(true)}
+                    disabled={createRestockingPOMutation.isPending}
+                    className="sm:mt-6 w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add New Supplier
+                  </button>
+                )}
+              </div>
               {prefilledSupplier && (
                 <p className="text-xs text-gray-500 mt-1">
                   Supplier locked from RFQ response
@@ -399,6 +452,16 @@ export function RestockModal({
           </button>
         </div>
       </div>
+
+      {/* Supplier Creation Modal */}
+      {showSupplierModal && (
+        <SupplierFormModal
+          supplier={null}
+          onClose={() => setShowSupplierModal(false)}
+          onSubmit={handleCreateSupplierWithDetails}
+          isSubmitting={createSupplierMutation.isPending}
+        />
+      )}
     </div>
   )
 }

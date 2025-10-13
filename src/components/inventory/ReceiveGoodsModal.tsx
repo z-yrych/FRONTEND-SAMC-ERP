@@ -6,6 +6,7 @@ import PackagingStructureModal from './PackagingStructureModal';
 import { SmartComboBox } from '../ui/SmartComboBox';
 import { useActiveWarehouseLocations, useCreateWarehouseLocation } from '../../hooks/useWarehouseLocations';
 import { BatchLabelPrintDialog } from './BatchLabelPrintDialog';
+import { useKeyboardAwareViewport } from '../../hooks/useKeyboardAwareViewport';
 
 interface PurchaseOrderItem {
   id: string;
@@ -64,6 +65,7 @@ const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
   purchaseOrderId,
 }) => {
   const queryClient = useQueryClient();
+  const { isVisible: isKeyboardVisible, viewportHeight } = useKeyboardAwareViewport();
   const [receivedItems, setReceivedItems] = useState<ReceivedItem[]>([]);
   const [receiptNumber, setReceiptNumber] = useState('');
   const [receivedBy, setReceivedBy] = useState('');
@@ -248,10 +250,24 @@ const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
     );
   }
 
+  // Calculate dynamic max height based on keyboard state
+  const getMaxHeight = () => {
+    if (isKeyboardVisible && viewportHeight > 0) {
+      return `${viewportHeight - 40}px`;
+    }
+    return '90vh';
+  };
+
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+        <div
+          className="bg-white rounded-lg shadow-xl w-full max-w-6xl flex flex-col"
+          style={{
+            maxHeight: getMaxHeight(),
+            transition: 'max-height 0.2s ease-out',
+          }}
+        >
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Receive Goods</h2>
@@ -500,7 +516,18 @@ const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                               <input
                                 type="number"
                                 value={item.quantity || ''}
-                                onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
+                                onChange={(e) => {
+                                  const inputValue = e.target.value
+                                  // Allow empty input for better UX
+                                  const quantity = inputValue === '' ? undefined : Number(inputValue) || undefined
+                                  handleItemChange(index, 'quantity', quantity)
+                                }}
+                                onBlur={(e) => {
+                                  // Ensure valid value on blur
+                                  if (!e.target.value || Number(e.target.value) < 1) {
+                                    handleItemChange(index, 'quantity', 1)
+                                  }
+                                }}
                                 min="1"
                                 max={poItem.orderedQuantity - poItem.receivedQuantity}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

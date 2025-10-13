@@ -3,7 +3,7 @@ import {
   fetchTransactionPurchaseOrders,
   fetchPurchaseOrderDetails,
   submitPurchaseOrder,
-  markSentManually,
+  confirmPOSent,
   confirmPurchaseOrder,
   receivePurchaseOrder,
   cancelPurchaseOrder
@@ -47,7 +47,7 @@ export function useMarkSentManually() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: markSentManually,
+    mutationFn: confirmPOSent,
     onSuccess: () => {
       // Invalidate purchase order queries
       queryClient.invalidateQueries({
@@ -89,6 +89,14 @@ export function useReceivePurchaseOrder() {
       })
       queryClient.invalidateQueries({
         queryKey: ['fulfillment']
+      })
+      // Invalidate transaction-pending-stock to update pending restocking PO banners
+      queryClient.invalidateQueries({
+        queryKey: ['transaction-pending-stock']
+      })
+      // Invalidate allocation opportunities (restocking PO receipt creates new opportunities)
+      queryClient.invalidateQueries({
+        queryKey: ['allocation-opportunities']
       })
       // Invalidate products query to reflect any products created during receipt
       queryClient.invalidateQueries({

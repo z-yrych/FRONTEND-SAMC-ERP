@@ -198,10 +198,14 @@ export interface TransactionOverviewStats {
   canShip: number
   canDeliver: number
   canGenerateInvoice: number
+  canGenerateInvoiceAmount?: number
   canSendInvoice: number
+  canSendInvoiceAmount?: number
   canRecordPayment: number
   paymentsDueToday: number
+  paymentsDueTodayAmount?: number
   paymentsOverdue: number
+  paymentsOverdueAmount?: number
   quotesExpiringSoon: number
 }
 
@@ -214,5 +218,28 @@ export async function fetchTransactionOverviewStats(): Promise<TransactionOvervi
 // Fetch all clients
 export async function fetchClients(): Promise<Client[]> {
   const response = await api.get(`/clients`)
+  return response.data
+}
+
+// Transaction Action Types
+export type TransactionActionType =
+  | 'quotes_can_be_sent'
+  | 'quotes_can_be_accepted'
+  | 'need_client_quotes'
+  | 'need_sourcing'
+  | 'can_ship'
+  | 'can_deliver'
+  | 'can_generate_invoice'
+  | 'can_send_invoice'
+  | 'payments_due_today'
+  | 'payments_overdue'
+  | 'quotes_expiring_soon'
+  | 'waiting_for_restocking'
+
+// Fetch transactions requiring specific action
+export async function fetchTransactionsRequiringAction(
+  actionType: TransactionActionType
+): Promise<Transaction[]> {
+  const response = await api.get(`/transactions/requiring-action/${actionType}`)
   return response.data
 }

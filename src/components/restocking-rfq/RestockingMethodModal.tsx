@@ -36,7 +36,6 @@ export function RestockingMethodModal({
           <button
             onClick={() => {
               onSelectMethod('direct_po');
-              onClose();
             }}
             className="w-full p-4 sm:p-6 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
           >
@@ -62,7 +61,6 @@ export function RestockingMethodModal({
           <button
             onClick={() => {
               onSelectMethod('rfq');
-              onClose();
             }}
             className="w-full p-4 sm:p-6 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-left group"
           >

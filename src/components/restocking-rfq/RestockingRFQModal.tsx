@@ -1,17 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { X, Send, Package, Building2, Calendar, MessageSquare, Plus, Trash2 } from 'lucide-react';
-import { useProductsWithStock } from '../../hooks/useProductManagement';
+import { useProductsWithStock, useCreateProduct } from '../../hooks/useProductManagement';
 import { useSuppliers, useCreateSupplier } from '../../hooks/useSuppliers';
 import { useCreateRestockingRFQ, useSendRestockingRFQ } from '../../hooks/useRestockingRFQ';
 import { showSuccess, showError, showWarning } from '../../lib/toast';
-import { SmartComboBox } from '../ui/SmartComboBox';
+import { SupplierFormModal } from '../masterdata/SupplierFormModal';
+import { ProductFormModal } from '../products/ProductFormModal';
 import type { ProductQuantity } from '../../lib/api/restocking-rfq';
-import type { Supplier } from '../../lib/api/suppliers';
+import type { Supplier, CreateSupplierDto } from '../../lib/api/suppliers';
+import type { CreateProductDto } from '../../lib/api/products';
 
 interface RestockingRFQModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  prefilledProduct?: { id: string; name: string; currentStock?: number };
 }
 
 interface ProductSelection {
@@ -30,19 +34,26 @@ interface SupplierSelection {
 export function RestockingRFQModal({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  prefilledProduct
 }: RestockingRFQModalProps) {
+  const queryClient = useQueryClient();
+
   const [selectedProducts, setSelectedProducts] = useState<ProductSelection[]>([
     { productId: '', productName: '', quantity: 1 }
   ]);
   const [selectedSuppliers, setSelectedSuppliers] = useState<SupplierSelection[]>([]);
-  const [currentSupplier, setCurrentSupplier] = useState<Supplier | null>(null);
   const [message, setMessage] = useState('');
   const [responseDeadline, setResponseDeadline] = useState('');
+
+  // Modal state
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
 
   const { data: allProducts = [] } = useProductsWithStock();
   const { data: suppliers = [] } = useSuppliers();
   const createSupplierMutation = useCreateSupplier();
+  const createProductMutation = useCreateProduct();
   const createRFQMutation = useCreateRestockingRFQ();
   const sendRFQMutation = useSendRestockingRFQ();
 
@@ -53,6 +64,18 @@ export function RestockingRFQModal({
   const availableSuppliers = suppliers
     .filter(s => s.isActive && s.email)
     .filter(s => !selectedSuppliers.some(sel => sel.supplierId === s.id));
+
+  // Pre-fill product when modal opens with prefilledProduct
+  useEffect(() => {
+    if (isOpen && prefilledProduct) {
+      setSelectedProducts([{
+        productId: prefilledProduct.id,
+        productName: prefilledProduct.name,
+        quantity: 1,
+        currentStock: prefilledProduct.currentStock
+      }]);
+    }
+  }, [isOpen, prefilledProduct]);
 
   if (!isOpen) return null;
 
@@ -80,15 +103,24 @@ export function RestockingRFQModal({
     setSelectedProducts(newProducts);
   };
 
-  const handleQuantityChange = (index: number, quantity: number) => {
+  const handleQuantityChange = (index: number, value: string) => {
     const newProducts = [...selectedProducts];
-    newProducts[index].quantity = Math.max(1, quantity);
+    // Allow empty input - set to 0 temporarily (will be validated on blur)
+    // This allows the input to actually display as empty
+    const quantity = value === '' ? 0 : Math.max(1, parseInt(value) || 0);
+    newProducts[index].quantity = quantity;
     setSelectedProducts(newProducts);
   };
 
-  const handleSupplierSelect = (supplier: { id: string; name: string }) => {
-    const fullSupplier = suppliers.find(s => s.id === supplier.id);
+  const handleSupplierSelect = (supplierId: string) => {
+    const fullSupplier = suppliers.find(s => s.id === supplierId);
     if (!fullSupplier) return;
+
+    // Check if already selected
+    if (selectedSuppliers.some(s => s.supplierId === fullSupplier.id)) {
+      showWarning('This supplier is already selected');
+      return;
+    }
 
     // Add to selected suppliers list
     setSelectedSuppliers([
@@ -99,25 +131,72 @@ export function RestockingRFQModal({
         email: fullSupplier.email
       }
     ]);
-
-    // Reset current supplier selection
-    setCurrentSupplier(null);
   };
 
-  const handleSupplierCreate = async (name: string): Promise<{ id: string; name: string }> => {
-    const newSupplier = await createSupplierMutation.mutateAsync({ name });
+  const handleCreateSupplier = async (data: CreateSupplierDto) => {
+    try {
+      const newSupplier = await createSupplierMutation.mutateAsync(data);
 
-    // Automatically add to selected suppliers
-    setSelectedSuppliers([
-      ...selectedSuppliers,
-      {
-        supplierId: newSupplier.id,
-        supplierName: newSupplier.name,
-        email: newSupplier.email
+      // Refetch suppliers cache to ensure the dropdown updates immediately
+      await queryClient.refetchQueries({ queryKey: ['suppliers'] });
+
+      showSuccess(`Supplier "${newSupplier.name}" created successfully!`);
+
+      // Automatically add to selected suppliers
+      setSelectedSuppliers([
+        ...selectedSuppliers,
+        {
+          supplierId: newSupplier.id,
+          supplierName: newSupplier.name,
+          email: newSupplier.email
+        }
+      ]);
+
+      setShowSupplierModal(false);
+    } catch (error: any) {
+      showError(error?.response?.data?.message || 'Failed to create supplier');
+      throw error;
+    }
+  };
+
+  const handleCreateProduct = async (data: CreateProductDto) => {
+    try {
+      const newProduct = await createProductMutation.mutateAsync(data);
+
+      // Refetch products cache to ensure the dropdown updates immediately
+      await queryClient.refetchQueries({ queryKey: ['products-with-stock'] });
+
+      showSuccess(`Product "${newProduct.name}" created successfully!`);
+
+      // Auto-select the new product in the first empty slot or add new slot
+      const emptySlotIndex = selectedProducts.findIndex(p => !p.productId);
+      if (emptySlotIndex !== -1) {
+        const newProducts = [...selectedProducts];
+        newProducts[emptySlotIndex] = {
+          productId: newProduct.id,
+          productName: newProduct.name,
+          quantity: 1,
+          currentStock: 0
+        };
+        setSelectedProducts(newProducts);
+      } else {
+        // Add new slot with the product
+        setSelectedProducts([
+          ...selectedProducts,
+          {
+            productId: newProduct.id,
+            productName: newProduct.name,
+            quantity: 1,
+            currentStock: 0
+          }
+        ]);
       }
-    ]);
 
-    return { id: newSupplier.id, name: newSupplier.name };
+      setShowProductModal(false);
+    } catch (error: any) {
+      showError(error?.response?.data?.message || 'Failed to create product');
+      throw error;
+    }
   };
 
   const handleRemoveSupplier = (supplierId: string) => {
@@ -185,7 +264,6 @@ export function RestockingRFQModal({
       // Reset form
       setSelectedProducts([{ productId: '', productName: '', quantity: 1 }]);
       setSelectedSuppliers([]);
-      setCurrentSupplier(null);
       setMessage('');
       setResponseDeadline('');
 
@@ -204,7 +282,6 @@ export function RestockingRFQModal({
     // Reset form
     setSelectedProducts([{ productId: '', productName: '', quantity: 1 }]);
     setSelectedSuppliers([]);
-    setCurrentSupplier(null);
     setMessage('');
     setResponseDeadline('');
 
@@ -245,15 +322,26 @@ export function RestockingRFQModal({
                 Products to Request Quotes For
                 <span className="text-red-500">*</span>
               </label>
-              <button
-                type="button"
-                onClick={handleAddProduct}
-                disabled={isSubmitting}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg disabled:opacity-50"
-              >
-                <Plus className="w-3 h-3" />
-                Add Product
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAddProduct}
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg disabled:opacity-50"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Row
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowProductModal(true)}
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50"
+                >
+                  <Plus className="w-3 h-3" />
+                  Create New Product
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -270,7 +358,7 @@ export function RestockingRFQModal({
                         : 'border-gray-200 bg-gray-50'
                     }`}
                   >
-                    <div className="flex-1 grid grid-cols-2 gap-3">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Product Selection */}
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -304,8 +392,17 @@ export function RestockingRFQModal({
                         <input
                           type="number"
                           min="1"
-                          value={product.quantity}
-                          onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
+                          value={product.quantity || ''}
+                          onChange={(e) => handleQuantityChange(index, e.target.value)}
+                          onBlur={(e) => {
+                            // Ensure valid value on blur - convert 0 or invalid to 1
+                            const value = parseInt(e.target.value);
+                            if (!e.target.value || isNaN(value) || value < 1) {
+                              const newProducts = [...selectedProducts];
+                              newProducts[index].quantity = 1;
+                              setSelectedProducts(newProducts);
+                            }
+                          }}
                           disabled={isSubmitting}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm disabled:opacity-50"
                         />
@@ -347,20 +444,39 @@ export function RestockingRFQModal({
               </label>
             </div>
 
-            {/* Supplier ComboBox */}
-            <div className="mb-3">
-              <SmartComboBox
-                label="Add Supplier"
-                placeholder="Search existing suppliers or type to create new..."
-                options={availableSuppliers.map(s => ({ id: s.id, name: s.name }))}
-                onSelect={handleSupplierSelect}
-                onCreate={handleSupplierCreate}
-                value={currentSupplier}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Search for existing suppliers or type a new name to create one
-              </p>
+            {/* Supplier Selection */}
+            <div className="mb-3 flex flex-col sm:flex-row gap-2">
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleSupplierSelect(e.target.value);
+                    e.target.value = ''; // Reset selection
+                  }
+                }}
+                disabled={isSubmitting}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm disabled:opacity-50"
+              >
+                <option value="">Select existing supplier...</option>
+                {availableSuppliers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} {s.email ? `(${s.email})` : ''}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowSupplierModal(true)}
+                disabled={isSubmitting}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4" />
+                Add New Supplier
+              </button>
             </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Select from existing suppliers or click "Add New Supplier" to create one with full details
+            </p>
 
             {/* Selected Suppliers List */}
             {selectedSuppliers.length > 0 ? (
@@ -472,6 +588,26 @@ export function RestockingRFQModal({
           </button>
         </div>
       </div>
+
+      {/* Supplier Creation Modal */}
+      {showSupplierModal && (
+        <SupplierFormModal
+          supplier={null}
+          onClose={() => setShowSupplierModal(false)}
+          onSubmit={handleCreateSupplier}
+          isSubmitting={createSupplierMutation.isPending}
+        />
+      )}
+
+      {/* Product Creation Modal */}
+      {showProductModal && (
+        <ProductFormModal
+          product={null}
+          onClose={() => setShowProductModal(false)}
+          onSubmit={handleCreateProduct}
+          isSubmitting={createProductMutation.isPending}
+        />
+      )}
     </div>
   );
 }

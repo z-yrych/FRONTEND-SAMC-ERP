@@ -47,12 +47,12 @@ export const ReceivePurchaseOrdersModal: React.FC<ReceivePurchaseOrdersModalProp
   const queryClient = useQueryClient();
   const [receivingPOId, setReceivingPOId] = useState<string | null>(null);
 
-  // Fetch submitted restocking POs only
+  // Fetch sent and partially received restocking POs
   const { data: submittedPOs = [], isLoading } = useQuery<PurchaseOrder[]>({
-    queryKey: ['purchase-orders', 'submitted', 'restocking'],
+    queryKey: ['purchase-orders', 'sent-and-partial', 'restocking'],
     queryFn: async () => {
       const response = await api.get('/purchase-orders', {
-        params: { status: 'submitted', type: 'restocking' },
+        params: { status: ['sent', 'partially_received'], type: 'restocking' },
       });
       return response.data;
     },
@@ -111,7 +111,15 @@ export const ReceivePurchaseOrdersModal: React.FC<ReceivePurchaseOrdersModalProp
               <>
                 {/* PO List */}
                 <div className="space-y-3">
-                  {submittedPOs.map((po) => {
+                  {submittedPOs
+                    .filter((po) => {
+                      // Only show POs with remaining items to receive
+                      const totalOrdered = po.items.reduce((sum, item) => sum + item.orderedQuantity, 0);
+                      const totalReceived = po.items.reduce((sum, item) => sum + item.receivedQuantity, 0);
+                      const remainingQty = totalOrdered - totalReceived;
+                      return remainingQty > 0;
+                    })
+                    .map((po) => {
                     const totalOrdered = po.items.reduce((sum, item) => sum + item.orderedQuantity, 0);
                     const totalReceived = po.items.reduce((sum, item) => sum + item.receivedQuantity, 0);
                     const remainingQty = totalOrdered - totalReceived;

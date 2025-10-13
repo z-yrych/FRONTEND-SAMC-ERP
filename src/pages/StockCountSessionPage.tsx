@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   List,
 } from 'lucide-react'
 import { BarcodeScanner } from '../components/barcode/BarcodeScanner'
+import { useKeyboardAwareViewport } from '../hooks/useKeyboardAwareViewport'
 import api from '../lib/axios'
 
 interface StockCountSession {
@@ -68,6 +69,8 @@ export function StockCountSessionPage() {
   const [selectedLine, setSelectedLine] = useState<CountLine | null>(null)
   const [scannedBatch, setScannedBatch] = useState('')
   const [scanMode, setScanMode] = useState<ScanMode>('manual')
+  const { isVisible: isKeyboardVisible } = useKeyboardAwareViewport()
+  const scanInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (sessionId) {
@@ -336,12 +339,24 @@ export function StockCountSessionPage() {
                     <div className="relative flex-1">
                       <Scan className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
+                        ref={scanInputRef}
                         type="text"
                         value={scannedBatch}
                         onChange={(e) => setScannedBatch(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && scannedBatch.trim()) {
                             handleScanBatch(scannedBatch.trim())
+                          }
+                        }}
+                        onFocus={() => {
+                          // Scroll into view when keyboard appears
+                          if (isKeyboardVisible) {
+                            setTimeout(() => {
+                              scanInputRef.current?.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'center'
+                              })
+                            }, 100)
                           }
                         }}
                         placeholder="Scan or enter batch number..."
@@ -475,9 +490,18 @@ function CountEntryPanel({ line, onRecordCount, onMarkNotFound, onSkip, onClose 
   const [casesCount, setCasesCount] = useState('')
   const [boxesCount, setBoxesCount] = useState('')
   const [piecesCount, setPiecesCount] = useState('')
+  const { scrollIntoView } = useKeyboardAwareViewport()
+  const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({})
 
   const packagingStructure = line.batch.packagingStructure
   const hasPackaging = !!packagingStructure
+
+  // Handle input focus to ensure visibility
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setTimeout(() => {
+      scrollIntoView(e.target, 80)
+    }, 100)
+  }
 
   // Calculate total quantity from hierarchical inputs
   const calculateHierarchicalTotal = (): number => {
@@ -609,6 +633,7 @@ function CountEntryPanel({ line, onRecordCount, onMarkNotFound, onSkip, onClose 
                   type="number"
                   value={casesCount}
                   onChange={(e) => setCasesCount(e.target.value)}
+                  onFocus={handleInputFocus}
                   placeholder="0"
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   min="0"
@@ -626,6 +651,7 @@ function CountEntryPanel({ line, onRecordCount, onMarkNotFound, onSkip, onClose 
                   type="number"
                   value={boxesCount}
                   onChange={(e) => setBoxesCount(e.target.value)}
+                  onFocus={handleInputFocus}
                   placeholder="0"
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   min="0"
@@ -641,6 +667,7 @@ function CountEntryPanel({ line, onRecordCount, onMarkNotFound, onSkip, onClose 
                 type="number"
                 value={piecesCount}
                 onChange={(e) => setPiecesCount(e.target.value)}
+                onFocus={handleInputFocus}
                 placeholder="0"
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 min="0"
@@ -663,6 +690,7 @@ function CountEntryPanel({ line, onRecordCount, onMarkNotFound, onSkip, onClose 
               type="number"
               value={countedQty}
               onChange={(e) => setCountedQty(e.target.value)}
+              onFocus={handleInputFocus}
               placeholder="Enter counted quantity"
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               autoFocus

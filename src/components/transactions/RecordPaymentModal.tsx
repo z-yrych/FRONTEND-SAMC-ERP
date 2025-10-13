@@ -9,11 +9,12 @@
  */
 
 import React, { useState } from 'react';
-import { X, DollarSign, CheckCircle, AlertCircle, FileText } from 'lucide-react';
+import { X, Coins, CheckCircle, AlertCircle, FileText } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axios';
 import { showSuccess, showError } from '../../lib/toast';
 import { TransactionCardListSkeleton } from '../ui/SkeletonCards';
+import { useKeyboardAwareViewport } from '../../hooks/useKeyboardAwareViewport';
 
 interface Invoice {
   id: string;
@@ -59,6 +60,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   onSuccess,
 }) => {
   const queryClient = useQueryClient();
+  const { isVisible: isKeyboardVisible, viewportHeight } = useKeyboardAwareViewport();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<string>('Cash');
@@ -164,13 +166,27 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Calculate dynamic max height based on keyboard state
+  const getMaxHeight = () => {
+    if (isKeyboardVisible && viewportHeight > 0) {
+      return `${viewportHeight - 40}px`;
+    }
+    return '85vh';
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] sm:max-h-[85vh] my-4 sm:my-auto flex flex-col">
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-4xl my-4 sm:my-auto flex flex-col"
+        style={{
+          maxHeight: getMaxHeight(),
+          transition: 'max-height 0.2s ease-out',
+        }}
+      >
         {/* Header - Sticky for mobile */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+            <Coins className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
             <div>
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Record Payment</h2>
               <p className="text-xs sm:text-sm text-gray-500">
@@ -391,7 +407,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                       disabled={!selectedInvoiceId || recordPaymentMutation.isPending}
                       className="px-4 py-2 text-sm sm:text-base bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                     >
-                      <DollarSign className="w-4 h-4" />
+                      <Coins className="w-4 h-4" />
                       {recordPaymentMutation.isPending ? 'Recording...' : 'Record Payment'}
                     </button>
                   </div>

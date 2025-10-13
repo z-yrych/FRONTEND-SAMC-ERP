@@ -35,6 +35,19 @@ export const FulfillmentSection: React.FC<FulfillmentSectionProps> = ({
 }) => {
   const allItemsAllocated = lineItems.every(item => item.quantityAllocated >= item.quantityNeeded);
 
+  // Debug logging to understand allocation state
+  console.log('FulfillmentSection - Debug Info:', {
+    status,
+    lineItems: lineItems.map(item => ({
+      productName: item.productName,
+      quantityNeeded: item.quantityNeeded,
+      quantityAllocated: item.quantityAllocated,
+      isFullyAllocated: item.quantityAllocated >= item.quantityNeeded,
+      allocations: item.allocations
+    })),
+    allItemsAllocated
+  });
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
       'waiting_for_items': { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Procurement' },

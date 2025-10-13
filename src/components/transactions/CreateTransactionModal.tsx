@@ -3,6 +3,7 @@ import { X, Plus } from 'lucide-react'
 import { SmartComboBox } from '../ui/SmartComboBox'
 import { ProductLineItem, type LineItem } from './ProductLineItem'
 import { useCreateTransaction } from '../../hooks/useTransactions'
+import { useKeyboardAwareViewport } from '../../hooks/useKeyboardAwareViewport'
 import type { Client, Product } from '../../lib/api/transactions'
 
 interface CreateTransactionModalProps {
@@ -27,8 +28,17 @@ export function CreateTransactionModal({
   const [notes, setNotes] = useState('')
 
   const createTransactionMutation = useCreateTransaction()
+  const { isVisible: isKeyboardVisible, viewportHeight } = useKeyboardAwareViewport()
 
   if (!isOpen) return null
+
+  // Calculate dynamic max height based on keyboard state
+  const getMaxHeight = () => {
+    if (isKeyboardVisible && viewportHeight > 0) {
+      return `${viewportHeight - 40}px`
+    }
+    return '90vh'
+  }
 
   const handleClientSelect = (client: { id: string; name: string }) => {
     setSelectedClient(client as Client)
@@ -108,7 +118,13 @@ export function CreateTransactionModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+      <div
+        className="bg-white rounded-lg w-full max-w-4xl flex flex-col"
+        style={{
+          maxHeight: getMaxHeight(),
+          transition: 'max-height 0.2s ease-out',
+        }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Create New Transaction</h2>

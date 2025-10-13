@@ -18,6 +18,7 @@ export function ProductsOverview() {
     mutationFn: createProduct,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-with-stock'] });
       setShowModal(false);
       showSuccess('Product created successfully!');
     },
@@ -31,6 +32,7 @@ export function ProductsOverview() {
       updateProduct(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-with-stock'] });
       setShowModal(false);
       setEditingProduct(null);
       showSuccess('Product updated successfully!');
@@ -44,6 +46,7 @@ export function ProductsOverview() {
     mutationFn: deleteProduct,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-with-stock'] });
       showSuccess('Product deleted successfully!');
     },
     onError: (error: any) => {

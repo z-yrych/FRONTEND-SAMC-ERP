@@ -46,6 +46,7 @@ export function SetAlertLevelsModal({ isOpen, onClose }: SetAlertLevelsModalProp
       // Refresh product lists
       queryClient.invalidateQueries({ queryKey: ['products-missing-alert-levels'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-with-stock'] });
       queryClient.invalidateQueries({ queryKey: ['products', 'low-stock'] });
 
       setShowProductFormModal(false);

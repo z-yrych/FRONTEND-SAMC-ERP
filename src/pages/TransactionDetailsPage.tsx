@@ -1,13 +1,15 @@
-import { useParams } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronRight, Plus, TrendingUp, AlertTriangle } from 'lucide-react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, ChevronDown, ChevronRight, Plus, TrendingUp, AlertTriangle, Menu, X, Package, Clock as ClockIcon } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import api from '../lib/axios';
 import { useTransaction } from '../hooks/useTransactions';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { TransactionStatus } from '../lib/api/transactions';
 import { useSuppliers, useSupplierQuotes, useClientQuotes, useCreateSupplierQuote, useSelectSupplierQuote, useCreateClientQuote, useSendClientQuote, useAcceptClientQuote, useDeleteClientQuote, useGenerateClientQuotePDF, useManuallyRejectClientQuote } from '../hooks/useQuotes';
 import { useRFQsByTransaction, useCreateRFQ, useSendRFQ } from '../hooks/useRFQ';
 import { useQuoteReviewStats } from '../hooks/useQuoteReview';
-import { useTransactionPurchaseOrders, useSubmitPurchaseOrder, useMarkSentManually, useConfirmPurchaseOrder, useReceivePurchaseOrder } from '../hooks/usePurchaseOrders';
+import { useTransactionPurchaseOrders, useSubmitPurchaseOrder, useConfirmPurchaseOrder, useReceivePurchaseOrder } from '../hooks/usePurchaseOrders';
 import { API_BASE } from '../lib/axios';
 import { useFulfillmentByTransaction, useShipFulfillment, useMarkFulfillmentAsDelivered } from '../hooks/useFulfillments';
 import { usePaymentSchemeAnalysis, useGenerateInvoice, useInvoicesByTransaction, useSendInvoice, useRecordPayment, usePayments } from '../hooks/useInvoices';
@@ -27,6 +29,7 @@ import { PaymentRecordModal } from '../components/invoicing/PaymentRecordModal';
 import { ProcurementSection } from '../components/procurement/ProcurementSection';
 import { useSourcingAnalysis } from '../hooks/useSourcingAnalysis';
 import ReceiveGoodsModal from '../components/inventory/ReceiveGoodsModal';
+import { AllocationOpportunitiesModal } from '../components/inventory/AllocationOpportunitiesModal';
 import { TransactionProgressGuide } from '../components/transactions/TransactionProgressGuide';
 import { showSuccess, showError, showWarning, showInfo } from '../lib/toast';
 
@@ -37,9 +40,11 @@ interface SectionProps {
   onToggle?: () => void;
   children: React.ReactNode;
   lockMessage?: string;
+  isHighlighted?: boolean;
+  sectionRef?: React.RefObject<HTMLDivElement>;
 }
 
-function TransactionSection({ title, status, isExpanded = false, onToggle, children, lockMessage }: SectionProps) {
+function TransactionSection({ title, status, isExpanded = false, onToggle, children, lockMessage, isHighlighted = false, sectionRef }: SectionProps) {
   const getStatusIcon = () => {
     switch (status) {
       case 'completed':
@@ -69,49 +74,72 @@ function TransactionSection({ title, status, isExpanded = false, onToggle, child
   if (status === 'hidden') return null;
 
   return (
-    <div className="overflow-hidden border border-gray-200 rounded-lg">
+    <div
+      ref={sectionRef}
+      className={`overflow-hidden border rounded-lg shadow-sm transition-all duration-500 ${
+        isHighlighted
+          ? 'border-blue-500 border-4 shadow-lg animate-pulse-border'
+          : 'border-gray-200'
+      }`}
+    >
       <button
         onClick={onToggle}
         disabled={status === 'locked'}
-        className={`flex items-center justify-between w-full px-6 py-4 text-left ${
+        className={`flex items-center justify-between w-full px-4 sm:px-6 py-3 sm:py-4 text-left transition-colors ${
           status === 'locked'
             ? 'bg-gray-50 cursor-not-allowed'
             : 'bg-white hover:bg-gray-50 cursor-pointer'
         }`}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
           {getStatusIcon()}
-          <h3 className={`text-lg font-medium ${status === 'locked' ? 'text-gray-400' : 'text-gray-900'}`}>
+          <h3 className={`text-base sm:text-lg font-medium truncate ${status === 'locked' ? 'text-gray-400' : 'text-gray-900'}`}>
             {title}
           </h3>
-          <span className={`text-sm ${status === 'locked' ? 'text-gray-400' : 'text-gray-600'}`}>
+          <span className={`text-xs sm:text-sm hidden md:inline ${status === 'locked' ? 'text-gray-400' : 'text-gray-600'}`}>
             [{getStatusText()}]
           </span>
         </div>
 
         {status !== 'locked' && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
             {isExpanded ? (
-              <ChevronDown className="w-5 h-5 text-gray-400" />
+              <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
             ) : (
-              <ChevronRight className="w-5 h-5 text-gray-400" />
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
             )}
           </div>
         )}
       </button>
 
-      {isExpanded && status !== 'locked' && (
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+      <div className={`transition-all duration-300 ease-in-out ${
+        isExpanded && status !== 'locked' ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+      } overflow-hidden`}>
+        <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 max-h-[600px] overflow-y-auto">
           {children}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 export function TransactionDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { data: transaction, isLoading, error } = useTransaction(id!);
+
+  // Get section and action from URL params
+  const urlSection = searchParams.get('section');
+  const urlAction = searchParams.get('action');
+
+  // Section refs for scrolling
+  const quotingRef = useRef<HTMLDivElement>(null);
+  const fulfillmentRef = useRef<HTMLDivElement>(null);
+  const procurementRef = useRef<HTMLDivElement>(null);
+  const invoicingRef = useRef<HTMLDivElement>(null);
+
+  // State for highlighted section
+  const [highlightedSection, setHighlightedSection] = useState<string | null>(null);
 
   // Quote-related hooks
   const { data: suppliers = [] } = useSuppliers();
@@ -135,10 +163,35 @@ export function TransactionDetailsPage() {
   // Quote Review hooks
   const { data: reviewStats } = useQuoteReviewStats();
 
+  // Pending stock info hook
+  const { data: pendingStockInfo } = useQuery({
+    queryKey: ['transaction-pending-stock', id],
+    queryFn: async () => {
+      const response = await api.get(`/transactions/${id}/pending-stock-info`);
+      return response.data;
+    },
+    enabled: !!id
+  });
+
+  // Allocation opportunities hook - fetch all and filter for this transaction's products
+  const { data: allocationOpportunities = [] } = useQuery({
+    queryKey: ['allocation-opportunities'],
+    queryFn: async () => {
+      const response = await api.get('/inventory/allocation-opportunities');
+      return response.data;
+    },
+    enabled: !!id && !!transaction
+  });
+
+  // Filter opportunities relevant to this transaction
+  const relevantOpportunities = allocationOpportunities.filter((opp: any) => {
+    // Check if any waiting transaction in this opportunity matches our transaction
+    return opp.waitingTransactions?.some((wt: any) => wt.transactionId === id);
+  });
+
   // Purchase order hooks
   const { data: purchaseOrders = [] } = useTransactionPurchaseOrders(id!);
   const submitPOMutation = useSubmitPurchaseOrder();
-  const markSentManuallyMutation = useMarkSentManually();
   const confirmPOMutation = useConfirmPurchaseOrder();
   const receivePOMutation = useReceivePurchaseOrder();
 
@@ -164,6 +217,9 @@ export function TransactionDetailsPage() {
 
   const [expandedProducts, setExpandedProducts] = useState<Record<string, boolean>>({});
 
+  // Sidebar toggle state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Modal states
   const [isSupplierQuoteModalOpen, setIsSupplierQuoteModalOpen] = useState(false);
   const [isRFQModalOpen, setIsRFQModalOpen] = useState(false);
@@ -183,6 +239,7 @@ export function TransactionDetailsPage() {
   const [selectedQuoteToSend, setSelectedQuoteToSend] = useState<any>(null);
   const [isManualRejectModalOpen, setIsManualRejectModalOpen] = useState(false);
   const [selectedQuoteToReject, setSelectedQuoteToReject] = useState<any>(null);
+  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -285,8 +342,15 @@ export function TransactionDetailsPage() {
 
   const handleSendQuoteMethodSelection = async (method: 'manual' | 'automatic') => {
     if (!selectedQuoteToSend) return;
-    await handleSendQuote(selectedQuoteToSend.id, method);
-    setSelectedQuoteToSend(null);
+    try {
+      await handleSendQuote(selectedQuoteToSend.id, method);
+      // Close modal after successful mutation
+      setIsSendQuoteMethodModalOpen(false);
+      setSelectedQuoteToSend(null);
+    } catch (error) {
+      // Error is already handled in handleSendQuote, just keep modal open
+      console.error('Error in handleSendQuoteMethodSelection:', error);
+    }
   };
 
   const handleAcceptQuote = async (quoteId: string) => {
@@ -345,27 +409,6 @@ export function TransactionDetailsPage() {
     } catch (error: any) {
       console.error('Failed to submit purchase order:', error);
       const errorMessage = error?.response?.data?.message || 'Failed to submit purchase order';
-      showError(errorMessage);
-    }
-  };
-
-  const handleManualSendPO = async (poId: string) => {
-    try {
-      // Get PO details for supplier name
-      const po = purchaseOrders.find(p => p.id === poId);
-      const supplierName = po?.supplier?.name || 'supplier';
-
-      // 1. Download PDF in new tab
-      window.open(`${API_BASE}/purchase-orders/${poId}/pdf`, '_blank');
-
-      // 2. Mark as sent manually
-      await markSentManuallyMutation.mutateAsync(poId);
-
-      // 3. Show success message
-      showSuccess(`PDF downloaded! Please send it to ${supplierName} via WhatsApp, phone, or in-person and get confirmation.`);
-    } catch (error: any) {
-      console.error('Failed to mark purchase order as sent manually:', error);
-      const errorMessage = error?.response?.data?.message || 'Failed to mark purchase order as sent';
       showError(errorMessage);
     }
   };
@@ -510,6 +553,31 @@ export function TransactionDetailsPage() {
   // Track which quotes have been auto-selected to prevent duplicates
   const autoSelectedQuotes = useRef(new Set<string>());
 
+  // Body scroll lock when modals or sidebar are open
+  useEffect(() => {
+    const hasOpenModal = isSupplierQuoteModalOpen || isRFQModalOpen || isQuoteComparisonModalOpen ||
+      isActiveQuoteComparisonOpen || isClientQuoteModalOpen || isShippingModalOpen ||
+      isDeliveryModalOpen || isInvoiceModalOpen || isPaymentModalOpen ||
+      isSendQuoteMethodModalOpen || isManualRejectModalOpen || isAllocationModalOpen ||
+      !!selectedPOForReceipt || isSidebarOpen;
+
+    if (hasOpenModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [
+    isSupplierQuoteModalOpen, isRFQModalOpen, isQuoteComparisonModalOpen,
+    isActiveQuoteComparisonOpen, isClientQuoteModalOpen, isShippingModalOpen,
+    isDeliveryModalOpen, isInvoiceModalOpen, isPaymentModalOpen,
+    isSendQuoteMethodModalOpen, isManualRejectModalOpen, isAllocationModalOpen,
+    selectedPOForReceipt, isSidebarOpen
+  ]);
+
   // Auto-select single quotes when only one quote exists for a line item
   useEffect(() => {
     if (!transaction || !supplierQuotes.length || selectSupplierQuoteMutation.isPending) return;
@@ -540,6 +608,49 @@ export function TransactionDetailsPage() {
       }
     });
   }, [transaction?.id, supplierQuotes.length]);
+
+  // Handle URL parameters for section highlighting and navigation
+  useEffect(() => {
+    if (!urlSection || !transaction) return;
+
+    // Map of section names to refs
+    const sectionRefMap: Record<string, React.RefObject<HTMLDivElement>> = {
+      quoting: quotingRef,
+      fulfillment: fulfillmentRef,
+      procurement: procurementRef,
+      invoicing: invoicingRef,
+    };
+
+    const targetRef = sectionRefMap[urlSection];
+    if (!targetRef) return;
+
+    // Expand the target section
+    setExpandedSections(prev => ({
+      ...prev,
+      [urlSection]: true,
+    }));
+
+    // Set highlight
+    setHighlightedSection(urlSection);
+
+    // Scroll to section after a brief delay to ensure rendering
+    const scrollTimeout = setTimeout(() => {
+      targetRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 300);
+
+    // Clear highlight after 3 seconds
+    const highlightTimeout = setTimeout(() => {
+      setHighlightedSection(null);
+    }, 3000);
+
+    return () => {
+      clearTimeout(scrollTimeout);
+      clearTimeout(highlightTimeout);
+    };
+  }, [urlSection, urlAction, transaction?.id]);
 
   if (isLoading) {
     return (
@@ -650,43 +761,179 @@ export function TransactionDetailsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="px-6 py-4">
-          <div className="flex items-center gap-4 mb-4">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="px-4 sm:px-6 py-4">
+          <div className="flex items-center gap-2 sm:gap-4 mb-4">
             <button
               onClick={() => window.history.back()}
               className="p-2 text-gray-600 rounded-lg hover:bg-gray-100"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">TRANSACTION #{transaction.transactionNumber}</h1>
-              <p className="text-gray-600">CLIENT: {transaction.client.name}</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">TRANSACTION #{transaction.transactionNumber}</h1>
+              <p className="text-sm sm:text-base text-gray-600 truncate">CLIENT: {transaction.client.name}</p>
             </div>
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="lg:hidden p-2 text-gray-600 rounded-lg hover:bg-gray-100"
+              aria-label="Toggle progress guide"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-gray-700">OVERALL STATUS:</span>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <span className="text-xs sm:text-sm font-medium text-gray-700">OVERALL STATUS:</span>
             <StatusBadge status={transaction.status} />
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex gap-6 p-6 max-w-7xl mx-auto">
-        {/* Main Content - Left Side */}
-        <div className="flex-1 space-y-4">
+      <div className="relative">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 p-4 sm:p-6 max-w-[1920px] mx-auto">
+          {/* Main Content - Left Side */}
+          <div className="flex-1 min-w-0 space-y-4">
           {/* Quoting Section */}
           <TransactionSection
-          title="1. QUOTING"
+          title={getSectionStatus('quoting') === 'completed' ? 'QUOTING' : '1. QUOTING'}
           status={getSectionStatus('quoting')}
           isExpanded={expandedSections.quoting}
           onToggle={() => toggleSection('quoting')}
+          sectionRef={quotingRef}
+          isHighlighted={highlightedSection === 'quoting'}
         >
           <div className="space-y-6">
             {/* Section Header */}
             <div className="pb-3 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Line Items to Fulfill</h3>
             </div>
+
+            {/* Allocation Opportunities Banner - Stock Ready! */}
+            {relevantOpportunities.length > 0 && (
+              <div className="p-4 border-2 border-green-400 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 shadow-md">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="flex-shrink-0 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                    <Package className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-base font-bold text-green-900 mb-1 flex items-center gap-2">
+                      ✨ Stock Ready for Allocation!
+                    </h4>
+                    <p className="text-sm text-green-800 mb-3">
+                      Good news! Stock has been received and is ready to be allocated to this transaction.
+                      {relevantOpportunities.length} product{relevantOpportunities.length !== 1 ? 's are' : ' is'} ready for allocation.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-4">
+                  {relevantOpportunities.map((opp: any) => (
+                    <div key={opp.id} className="p-3 bg-white border-2 border-green-300 rounded-lg shadow-sm">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900 mb-1">{opp.product.name}</p>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-gray-600">Available: </span>
+                              <span className="font-medium text-green-700">{opp.quantityRemaining} units</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">From: </span>
+                              <span className="font-medium">{opp.sourcePO.poNumber}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="ml-3">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-500 text-white animate-pulse">
+                            Ready
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setIsAllocationModalOpen(true)}
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                >
+                  <Package className="w-5 h-5" />
+                  Allocate Stock Now
+                </button>
+              </div>
+            )}
+
+            {/* Pending Stock Info Banner - Waiting for Delivery */}
+            {pendingStockInfo?.hasPendingStock && relevantOpportunities.length === 0 && (
+              <div className="p-4 border-2 border-cyan-300 rounded-lg bg-cyan-50">
+                <div className="flex items-start gap-3 mb-3">
+                  <Package className="w-5 h-5 text-cyan-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-cyan-900 mb-1">
+                      ⏳ Pending Restocking Purchase Orders
+                    </h4>
+                    <p className="text-xs text-cyan-800 mb-3">
+                      Some products in this transaction have pending restocking POs that are on their way. Stock will be available once these POs are received.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {pendingStockInfo.pendingStockInfo.map((info: any) => (
+                    <div key={info.productId} className="p-3 bg-white border border-cyan-200 rounded">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{info.productName}</p>
+                          <p className="text-sm text-gray-600">
+                            Quantity needed for this transaction: {info.quantityNeeded}
+                            {info.requiresSourcing && (
+                              <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs font-medium">
+                                Requires Sourcing
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      {info.pendingPOs.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          <p className="text-xs font-medium text-cyan-900">Pending Restocking POs:</p>
+                          {info.pendingPOs.map((po: any, idx: number) => (
+                            <div key={idx} className="flex items-center justify-between p-2 bg-cyan-50 border border-cyan-200 rounded text-xs">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium text-gray-900">PO {po.poNumber}</span>
+                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                    po.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                                    po.status === 'confirmed' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {po.status}
+                                  </span>
+                                </div>
+                                <p className="text-gray-600">
+                                  Supplier: {po.supplierName}
+                                </p>
+                                <div className="flex items-center gap-3 text-gray-600 mt-1">
+                                  <span>{po.quantityRemaining} units arriving</span>
+                                  {po.expectedDeliveryDate && (
+                                    <span className="flex items-center gap-1">
+                                      <ClockIcon className="w-3 h-3" />
+                                      {new Date(po.expectedDeliveryDate).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Items Fulfilled from Stock */}
             {(() => {
@@ -698,8 +945,11 @@ export function TransactionDetailsPage() {
                   <h4 className="mb-3 text-sm font-semibold text-green-900">Items Fulfilled from Stock</h4>
                   <div className="space-y-3">
                     {stockItems.map((item, index) => {
-                      const sourcingInfo = sourcingAnalysis?.lineItems?.find(si => si.lineItemId === item.id);
-                      const calculatedCost = sourcingInfo?.inventoryCost || (item.unitCost ? item.unitCost * item.quantity : 0);
+                      // calculatedInventoryCost is already a TOTAL cost from backend FIFO calculation, not unit cost
+                      // Backend returns Decimal as string, so we need parseFloat() for type safety
+                      const totalCost = item.calculatedInventoryCost
+                        ? parseFloat(item.calculatedInventoryCost.toString())
+                        : (item.unitCost * item.quantity) || 0;
 
                       return (
                         <div key={index} className="p-3 bg-white border border-green-200 rounded">
@@ -713,7 +963,7 @@ export function TransactionDetailsPage() {
                             </div>
                             <div className="text-right">
                               <p className="text-sm font-medium text-gray-900">
-                                ₱{calculatedCost.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                ₱{totalCost.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                               </p>
                               <p className="text-xs text-gray-500">(using FEFO/FIFO)</p>
                             </div>
@@ -848,15 +1098,15 @@ export function TransactionDetailsPage() {
                                                 </span>
                                               )}
                                             </div>
-                                            <div className="flex items-center gap-3 text-xs text-gray-600">
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs text-gray-600">
                                               <span className="font-medium text-gray-900">
                                                 ₱{quote.unitCost.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/unit
                                               </span>
-                                              <span>•</span>
+                                              <span className="hidden sm:inline">•</span>
                                               <span>Total: ₱{(quote.unitCost * quote.quantity).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
                                               {quote.leadTimeDays && (
                                                 <>
-                                                  <span>•</span>
+                                                  <span className="hidden sm:inline">•</span>
                                                   <span>{quote.leadTimeDays} days</span>
                                                 </>
                                               )}
@@ -989,9 +1239,13 @@ export function TransactionDetailsPage() {
                   const stockItems = transaction?.lineItems?.filter(item => !item.requiresSourcing) || [];
                   const sourcingItems = transaction?.lineItems?.filter(item => item.requiresSourcing) || [];
 
+                  // calculatedInventoryCost is already a TOTAL cost from backend FIFO calculation, not unit cost
+                  // Backend returns Decimal as string, so we need parseFloat() to avoid string concatenation
                   const stockCost = stockItems.reduce((sum, item) => {
-                    const sourcingInfo = sourcingAnalysis?.lineItems?.find(si => si.lineItemId === item.id);
-                    return sum + (sourcingInfo?.inventoryCost || (item.unitCost ? item.unitCost * item.quantity : 0));
+                    const totalCost = item.calculatedInventoryCost
+                      ? parseFloat(item.calculatedInventoryCost.toString())
+                      : (item.unitCost * item.quantity) || 0;
+                    return sum + totalCost;
                   }, 0);
 
                   const sourcingCost = sourcingItems.reduce((sum, item) => {
@@ -1053,7 +1307,7 @@ export function TransactionDetailsPage() {
                               ₱{quote.totalAmount?.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                             </p>
                             <p className="text-xs text-gray-500">
-                              Pre-tax: ₱{((quote.totalAmount || 0) / 1.12).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                              Pre-tax: ₱{quote.subtotal?.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                             </p>
                             {/* Response tracking information */}
                             {quote.clientResponseEmail && (
@@ -1165,41 +1419,60 @@ export function TransactionDetailsPage() {
 
         {/* Fulfillment Section */}
         <TransactionSection
-          title="2. FULFILLMENT"
+          title={getSectionStatus('fulfillment') === 'completed' ? 'FULFILLMENT' : '2. FULFILLMENT'}
           status={getSectionStatus('fulfillment')}
           isExpanded={expandedSections.fulfillment}
           onToggle={() => toggleSection('fulfillment')}
           lockMessage="Complete quoting first"
+          sectionRef={fulfillmentRef}
+          isHighlighted={highlightedSection === 'fulfillment'}
         >
-          <FulfillmentSection
-            orderNumber={transaction.transactionNumber}
-            status={transaction.status}
-            lineItems={transaction?.lineItems?.map(item => ({
-              productId: item.product.id,
-              productName: item.product.name,
-              quantityNeeded: item.quantity,
-              quantityAllocated: item.allocatedQuantity || 0,
-              allocations: item.stockAllocations?.map((alloc: any) => ({
-                source: alloc.source === 'stock' ? 'stock' : 'procurement',
-                quantity: alloc.quantity,
-                batchNumber: alloc.inventoryBatch?.batchNumber,
-                purchaseOrderId: alloc.inventoryBatch?.purchaseOrderId,
-                poNumber: alloc.inventoryBatch?.purchaseOrder?.poNumber,
-                status: alloc.status
-              })) || []
-            })) || []}
-            onMarkAsShipped={() => setIsShippingModalOpen(true)}
-            onMarkAsDelivered={() => setIsDeliveryModalOpen(true)}
-          />
+          {(() => {
+            // Debug logging for raw transaction data
+            console.log('TransactionDetailsPage - Fulfillment Data:', {
+              transactionStatus: transaction.status,
+              lineItems: transaction?.lineItems?.map(item => ({
+                productName: item.product.name,
+                quantity: item.quantity,
+                allocatedQuantity: item.allocatedQuantity,
+                stockAllocations: item.stockAllocations
+              }))
+            });
+
+            return (
+              <FulfillmentSection
+                orderNumber={transaction.transactionNumber}
+                status={transaction.status}
+                lineItems={transaction?.lineItems?.map(item => ({
+                  productId: item.product.id,
+                  productName: item.product.name,
+                  quantityNeeded: item.quantity,
+                  quantityAllocated: item.allocatedQuantity || 0,
+                  allocations: item.stockAllocations?.map((alloc: any) => ({
+                    source: alloc.source === 'stock' ? 'stock' : 'procurement',
+                    quantity: alloc.quantity,
+                    batchNumber: alloc.inventoryBatch?.batchNumber,
+                    purchaseOrderId: alloc.inventoryBatch?.purchaseOrderId,
+                    poNumber: alloc.inventoryBatch?.purchaseOrder?.poNumber,
+                    status: alloc.status
+                  })) || []
+                })) || []}
+                onMarkAsShipped={() => setIsShippingModalOpen(true)}
+                onMarkAsDelivered={() => setIsDeliveryModalOpen(true)}
+              />
+            );
+          })()}
         </TransactionSection>
 
         {/* Procurement Section */}
         <TransactionSection
-          title="3. PROCUREMENT"
+          title={getSectionStatus('procurement') === 'completed' ? 'PROCUREMENT' : '3. PROCUREMENT'}
           status={getSectionStatus('procurement')}
           isExpanded={expandedSections.procurement}
           onToggle={() => toggleSection('procurement')}
           lockMessage="Accept a client quote first"
+          sectionRef={procurementRef}
+          isHighlighted={highlightedSection === 'procurement'}
         >
           <ProcurementSection
             backorders={transaction?.lineItems?.flatMap(lineItem =>
@@ -1215,7 +1488,6 @@ export function TransactionDetailsPage() {
             ).filter(Boolean) || []}
             purchaseOrders={purchaseOrders}
             onSubmitPO={handleSubmitPO}
-            onManualSendPO={handleManualSendPO}
             onConfirmPO={handleConfirmPO}
             onReceivePO={(poId) => {
               const po = purchaseOrders.find(p => p.id === poId);
@@ -1228,7 +1500,6 @@ export function TransactionDetailsPage() {
             onOpenReceiptModal={(po) => setSelectedPOForReceipt(po)}
             isLoading={{
               submit: submitPOMutation.isPending,
-              manualSend: markSentManuallyMutation.isPending,
               confirm: confirmPOMutation.isPending,
               receive: receivePOMutation.isPending
             }}
@@ -1237,11 +1508,13 @@ export function TransactionDetailsPage() {
 
         {/* Invoicing Section */}
         <TransactionSection
-          title="4. INVOICING & PAYMENTS"
+          title={getSectionStatus('invoicing') === 'completed' ? 'INVOICING & PAYMENTS' : '4. INVOICING & PAYMENTS'}
           status={getSectionStatus('invoicing')}
           isExpanded={expandedSections.invoicing}
           onToggle={() => toggleSection('invoicing')}
           lockMessage="Complete delivery first"
+          sectionRef={invoicingRef}
+          isHighlighted={highlightedSection === 'invoicing'}
         >
           <div className="space-y-4">
             {transaction.status === TransactionStatus.DELIVERED ? (
@@ -1292,7 +1565,7 @@ export function TransactionDetailsPage() {
                                 ₱{invoice.balanceDue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                               </p>
                               <p className="text-xs text-gray-500">
-                                Pre-tax: ₱{(invoice.balanceDue / 1.12).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                Pre-tax: ₱{invoice.subtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                               </p>
                             </div>
                           </div>
@@ -1384,9 +1657,9 @@ export function TransactionDetailsPage() {
         </TransactionSection>
         </div>
 
-        {/* Sticky Progress Guide - Right Side */}
-        <div className="w-96 flex-shrink-0">
-          <div className="sticky top-6">
+        {/* Sticky Progress Guide - Right Side (Desktop) */}
+        <div className="hidden lg:block lg:w-80 xl:w-96 flex-shrink-0">
+          <div className="sticky top-24">
             <TransactionProgressGuide
               transaction={transaction}
               clientQuotes={clientQuotes}
@@ -1396,6 +1669,41 @@ export function TransactionDetailsPage() {
               invoices={invoices}
             />
           </div>
+        </div>
+
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+            {/* Sidebar */}
+            <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-xl z-50 lg:hidden overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10">
+                <h3 className="text-lg font-semibold text-gray-900">Progress Guide</h3>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="p-2 text-gray-600 rounded-lg hover:bg-gray-100"
+                  aria-label="Close progress guide"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4">
+                <TransactionProgressGuide
+                  transaction={transaction}
+                  clientQuotes={clientQuotes}
+                  supplierQuotes={supplierQuotes}
+                  purchaseOrders={purchaseOrders}
+                  fulfillment={fulfillment}
+                  invoices={invoices}
+                />
+              </div>
+            </div>
+          </>
+        )}
         </div>
       </div>
 
@@ -1534,6 +1842,18 @@ export function TransactionDetailsPage() {
           clientName={transaction.client.name}
         />
       )}
+
+      {/* Allocation Opportunities Modal */}
+      <AllocationOpportunitiesModal
+        isOpen={isAllocationModalOpen}
+        onClose={() => setIsAllocationModalOpen(false)}
+        onSuccess={() => {
+          // Refetch transaction data after allocation
+          showSuccess('Stock allocated successfully! Refreshing transaction data...');
+          // Transaction will auto-refresh via useTransaction hook invalidation
+          setIsAllocationModalOpen(false);
+        }}
+      />
     </div>
   );
 }

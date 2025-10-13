@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { Client, CreateClientDto, UpdateClientDto } from '../../lib/api/clients';
+import { useKeyboardAwareViewport } from '../../hooks/useKeyboardAwareViewport';
 
 interface ClientFormModalProps {
   client: Client | null;
@@ -10,12 +11,21 @@ interface ClientFormModalProps {
 }
 
 export function ClientFormModal({ client, onClose, onSubmit, isSubmitting }: ClientFormModalProps) {
+  const { isVisible: isKeyboardVisible, viewportHeight } = useKeyboardAwareViewport();
   const [formData, setFormData] = useState({
     name: client?.name || '',
     email: client?.email || '',
     phone: client?.phone || '',
     address: client?.address || '',
   });
+
+  // Calculate dynamic max height based on keyboard state
+  const getMaxHeight = () => {
+    if (isKeyboardVisible && viewportHeight > 0) {
+      return `${viewportHeight - 40}px`;
+    }
+    return '90vh';
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +43,13 @@ export function ClientFormModal({ client, onClose, onSubmit, isSubmitting }: Cli
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-[60]">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col">
+      <div
+        className="bg-white rounded-lg max-w-md w-full flex flex-col"
+        style={{
+          maxHeight: getMaxHeight(),
+          transition: 'max-height 0.2s ease-out',
+        }}
+      >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
             {client ? 'Edit Client' : 'Add New Client'}

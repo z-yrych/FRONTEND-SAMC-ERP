@@ -141,7 +141,10 @@ export const SendPurchaseOrdersModal: React.FC<SendPurchaseOrdersModalProps> = (
 
       // Show results
       if (successCount > 0) {
-        showSuccess(`Successfully downloaded ${successCount} purchase order${successCount !== 1 ? 's' : ''}`);
+        showSuccess(
+          `Downloaded ${successCount} PO${successCount !== 1 ? 's' : ''}! ` +
+          `Check Tasks section to confirm they were sent.`
+        );
       }
       if (failCount > 0) {
         showError(`Failed to download ${failCount} purchase order${failCount !== 1 ? 's' : ''}`);

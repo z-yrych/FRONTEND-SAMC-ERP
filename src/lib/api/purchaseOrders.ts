@@ -14,7 +14,7 @@ export interface PurchaseOrder {
     id: string
     name: string
   }
-  status: 'draft' | 'submitted' | 'confirmed' | 'partially_received' | 'received' | 'cancelled'
+  status: 'draft' | 'sent' | 'submitted' | 'confirmed' | 'partially_received' | 'received' | 'cancelled'
   totalAmount: number
   expectedDelivery: string
   actualDelivery?: string
@@ -88,15 +88,32 @@ export async function submitPurchaseOrder(poId: string): Promise<PurchaseOrder> 
   }
 }
 
-// Mark purchase order as sent manually (without email)
-export async function markSentManually(poId: string): Promise<PurchaseOrder> {
-  console.log('Marking purchase order as sent manually:', poId)
+// Confirm PO was sent manually (download then sent via WhatsApp/etc)
+export async function confirmPOSent(poId: string): Promise<PurchaseOrder> {
+  console.log('Confirming purchase order was sent:', poId)
 
   try {
-    const response = await api.post(`/purchase-orders/${poId}/mark-sent-manually`)
+    const response = await api.post(`/purchase-orders/${poId}/confirm-sent`)
     return response.data
   } catch (error: any) {
-    console.error('Failed to mark purchase order as sent manually:', {
+    console.error('Failed to confirm purchase order sent:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      poId
+    })
+    throw error
+  }
+}
+
+// Resend purchase order email
+export async function resendPOEmail(poId: string): Promise<{ emailChanged: boolean; oldEmail?: string; newEmail?: string }> {
+  console.log('Resending purchase order email:', poId)
+
+  try {
+    const response = await api.post(`/purchase-orders/${poId}/resend-email`)
+    return response.data
+  } catch (error: any) {
+    console.error('Failed to resend purchase order email:', {
       status: error.response?.status,
       data: error.response?.data,
       poId

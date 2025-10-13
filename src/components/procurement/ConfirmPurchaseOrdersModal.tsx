@@ -35,12 +35,12 @@ export const ConfirmPurchaseOrdersModal: React.FC<ConfirmPurchaseOrdersModalProp
   const [selectedPOs, setSelectedPOs] = useState<Set<string>>(new Set());
   const [receivingPOId, setReceivingPOId] = useState<string | null>(null);
 
-  // Fetch submitted POs
+  // Fetch sent POs (previously 'submitted')
   const { data: submittedPOs = [], isLoading } = useQuery<PurchaseOrder[]>({
-    queryKey: ['purchase-orders', 'submitted'],
+    queryKey: ['purchase-orders', 'sent'],
     queryFn: async () => {
       const response = await api.get('/purchase-orders', {
-        params: { status: 'submitted' },
+        params: { status: 'sent' },
       });
       return response.data;
     },

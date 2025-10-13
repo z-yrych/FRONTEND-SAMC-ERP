@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { CheckCircle, AlertCircle, FileText, Clock } from 'lucide-react';
-import { TransactionProcurementMethodModal } from './TransactionProcurementMethodModal';
 
 interface Backorder {
   id: string;
@@ -20,7 +19,7 @@ interface PurchaseOrder {
     id: string;
     name: string;
   };
-  status: 'draft' | 'submitted' | 'confirmed' | 'partially_received' | 'received' | 'cancelled';
+  status: 'draft' | 'sent' | 'submitted' | 'confirmed' | 'partially_received' | 'received' | 'cancelled';
   totalAmount: number;
   items: {
     id: string;
@@ -46,13 +45,11 @@ interface ProcurementSectionProps {
   backorders: Backorder[];
   purchaseOrders: PurchaseOrder[];
   onSubmitPO: (poId: string) => void;
-  onManualSendPO: (poId: string) => void;
   onConfirmPO: (poId: string) => void;
   onReceivePO: (poId: string) => void;
   onOpenReceiptModal?: (po: PurchaseOrder) => void;
   isLoading?: {
     submit?: boolean;
-    manualSend?: boolean;
     confirm?: boolean;
     receive?: boolean;
   };
@@ -62,15 +59,12 @@ export const ProcurementSection: React.FC<ProcurementSectionProps> = ({
   backorders,
   purchaseOrders,
   onSubmitPO,
-  onManualSendPO,
   onConfirmPO,
   onReceivePO,
   onOpenReceiptModal,
   isLoading = {}
 }) => {
   const [expandedPOs, setExpandedPOs] = useState<Set<string>>(new Set());
-  const [isProcurementMethodModalOpen, setIsProcurementMethodModalOpen] = useState(false);
-  const [selectedPOForMethod, setSelectedPOForMethod] = useState<PurchaseOrder | null>(null);
 
   const togglePOExpanded = (poId: string) => {
     const newExpanded = new Set(expandedPOs);
@@ -82,24 +76,16 @@ export const ProcurementSection: React.FC<ProcurementSectionProps> = ({
     setExpandedPOs(newExpanded);
   };
 
-  const handleProcurementMethodSelected = (method: 'email_send' | 'manual_send') => {
-    if (!selectedPOForMethod) return;
-
-    if (method === 'email_send') {
-      // Send via email (existing functionality)
-      onSubmitPO(selectedPOForMethod.id);
-    } else if (method === 'manual_send') {
-      // Download PDF and mark as sent manually
-      onManualSendPO(selectedPOForMethod.id);
-    }
-
-    setSelectedPOForMethod(null);
+  const handleDownloadPDF = (poId: string) => {
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    window.open(`${API_BASE}/purchase-orders/${poId}/pdf`, '_blank');
   };
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { bg: string; text: string }> = {
       'draft': { bg: 'bg-gray-100', text: 'text-gray-700' },
-      'submitted': { bg: 'bg-blue-100', text: 'text-blue-700' },
+      'sent': { bg: 'bg-blue-100', text: 'text-blue-700' },
+      'submitted': { bg: 'bg-blue-100', text: 'text-blue-700' }, // Deprecated, maps to 'sent'
       'confirmed': { bg: 'bg-yellow-100', text: 'text-yellow-700' },
       'partially_received': { bg: 'bg-orange-100', text: 'text-orange-700' },
       'received': { bg: 'bg-green-100', text: 'text-green-700' },
@@ -145,8 +131,8 @@ export const ProcurementSection: React.FC<ProcurementSectionProps> = ({
       {backorders.length > 0 && (
         <div>
           <h4 className="text-sm font-medium text-gray-700 mb-3">Backorders (Items to Purchase)</h4>
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full">
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full min-w-[500px]">
               <thead className="bg-gray-50">
                 <tr className="text-xs text-gray-600 font-medium">
                   <th className="text-left px-3 py-2"></th>
@@ -203,10 +189,10 @@ export const ProcurementSection: React.FC<ProcurementSectionProps> = ({
               return (
                 <div key={po.id} className="border rounded-lg overflow-hidden">
                   <div className="p-4 bg-white">
-                    <div className="flex items-start justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                       {/* PO Info */}
                       <div className="flex-1">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h5 className="font-medium text-gray-900">Purchase Order #{po.poNumber}</h5>
                           {po.type === 'transaction_fulfillment' ? (
                             <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
@@ -230,7 +216,7 @@ export const ProcurementSection: React.FC<ProcurementSectionProps> = ({
                       </div>
 
                       {/* Total Amount */}
-                      <div className="text-right">
+                      <div className="text-left sm:text-right">
                         <p className="font-medium text-gray-900">
                           ₱{po.totalAmount?.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                         </p>
@@ -248,19 +234,33 @@ export const ProcurementSection: React.FC<ProcurementSectionProps> = ({
                       </button>
 
                       {po.status === 'draft' && (
+                        <>
+                          <button
+                            onClick={() => onSubmitPO(po.id)}
+                            className="px-3 py-1 text-xs text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+                            disabled={isLoading.submit}
+                          >
+                            {isLoading.submit ? 'Sending...' : 'Send via Email'}
+                          </button>
+                          <button
+                            onClick={() => handleDownloadPDF(po.id)}
+                            className="px-3 py-1 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
+                          >
+                            Download PDF
+                          </button>
+                        </>
+                      )}
+
+                      {po.status !== 'draft' && (
                         <button
-                          onClick={() => {
-                            setSelectedPOForMethod(po);
-                            setIsProcurementMethodModalOpen(true);
-                          }}
-                          className="px-3 py-1 text-xs text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
-                          disabled={isLoading.submit}
+                          onClick={() => handleDownloadPDF(po.id)}
+                          className="px-3 py-1 text-xs text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
                         >
-                          {isLoading.submit ? 'Sending...' : 'Send to Supplier'}
+                          Download PDF
                         </button>
                       )}
 
-                      {po.status === 'submitted' && (
+                      {(po.status === 'sent' || po.status === 'submitted') && (
                         <button
                           onClick={() => onConfirmPO(po.id)}
                           className="px-3 py-1 text-xs text-white bg-yellow-600 rounded hover:bg-yellow-700 disabled:opacity-50"
@@ -339,20 +339,6 @@ export const ProcurementSection: React.FC<ProcurementSectionProps> = ({
             Purchase orders will be automatically created when you accept a client quote.
           </p>
         </div>
-      )}
-
-      {/* Procurement Method Modal */}
-      {selectedPOForMethod && (
-        <TransactionProcurementMethodModal
-          isOpen={isProcurementMethodModalOpen}
-          onClose={() => {
-            setIsProcurementMethodModalOpen(false);
-            setSelectedPOForMethod(null);
-          }}
-          onSelectMethod={handleProcurementMethodSelected}
-          supplierName={selectedPOForMethod.supplier.name}
-          poNumber={selectedPOForMethod.poNumber}
-        />
       )}
     </div>
   );

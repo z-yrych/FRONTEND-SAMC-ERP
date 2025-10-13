@@ -26,7 +26,7 @@ export interface PurchaseOrder {
   id: string
   poNumber: string
   type: 'restocking' | 'transaction_fulfillment'
-  status: 'draft' | 'submitted' | 'confirmed' | 'partially_received' | 'received' | 'cancelled'
+  status: 'draft' | 'sent' | 'submitted' | 'confirmed' | 'partially_received' | 'received' | 'cancelled'
   supplierId: string
   supplierName?: string
   totalAmount: number

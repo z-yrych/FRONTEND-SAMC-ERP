@@ -64,7 +64,11 @@ export function ProductLineItem({
     return newProduct
   }
 
-  const handleQuantityChange = (quantity: number) => {
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value
+    // Allow empty input - set to 0 temporarily (will be validated on blur)
+    // This allows the input to actually display as empty
+    const quantity = inputValue === '' ? 0 : (parseInt(inputValue) || 0)
     onChange(index, { ...value, quantity })
   }
 
@@ -74,9 +78,9 @@ export function ProductLineItem({
 
   return (
     <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
-      <div className="flex gap-4 items-start">
+      <div className="flex flex-wrap sm:flex-nowrap gap-4 items-start">
         {/* Product Selection */}
-        <div className="flex-1">
+        <div className="w-full sm:flex-1">
           <SmartComboBox
             label="Product"
             placeholder="Search products or type new name..."
@@ -88,21 +92,28 @@ export function ProductLineItem({
         </div>
 
         {/* Quantity */}
-        <div className="w-24">
+        <div className="w-full sm:w-24">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Qty
           </label>
           <input
             type="number"
             min="1"
-            value={value.quantity}
-            onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
+            value={value.quantity || ''}
+            onChange={handleQuantityChange}
+            onBlur={(e) => {
+              // Ensure valid value on blur - convert 0 or invalid to 1
+              const numValue = parseInt(e.target.value);
+              if (!e.target.value || isNaN(numValue) || numValue < 1) {
+                onChange(index, { ...value, quantity: 1 })
+              }
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
         {/* Remove Button */}
-        <div className="pt-6">
+        <div className="w-full sm:w-auto sm:pt-6 flex sm:block justify-end">
           <button
             type="button"
             onClick={() => onRemove(index)}
