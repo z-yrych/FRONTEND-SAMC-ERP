@@ -50,66 +50,66 @@ export function TransactionOverview() {
   return (
     <div className="space-y-6" data-section="transactions">
       {/* Section Header */}
-      <div className="border-b border-gray-200 pb-4">
-        <h2 className="text-2xl font-bold text-gray-900">Transaction Management</h2>
-        <p className="mt-1 text-sm text-gray-600">
+      <div className="border-b border-gray-200 pb-5">
+        <h2 className="text-3xl font-bold text-gray-900">Transaction Management</h2>
+        <p className="mt-2 text-base text-gray-600">
           Manage transactions from quote to payment
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Pending Actions */}
-        <div className="bg-white rounded-lg border-2 border-orange-200 p-6">
+        <div className="bg-white rounded-lg border-2 border-orange-200 p-7">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Needs Action</p>
-              <p className="text-3xl font-bold text-orange-600 mt-2">
+              <p className="text-base font-medium text-gray-600">Needs Action</p>
+              <p className="text-4xl font-bold text-orange-600 mt-3">
                 {needsAction}
               </p>
             </div>
-            <AlertCircle className="w-12 h-12 text-orange-600 opacity-20" />
+            <AlertCircle className="w-14 h-14 text-orange-600 opacity-20" />
           </div>
-          <p className="text-xs text-gray-500 mt-3">
+          <p className="text-sm text-gray-500 mt-4">
             Transaction{needsAction !== 1 ? 's' : ''} requiring workflow actions
           </p>
         </div>
 
         {/* Active Transactions */}
-        <div className="bg-white rounded-lg border-2 border-blue-200 p-6">
+        <div className="bg-white rounded-lg border-2 border-blue-200 p-7">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Active</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">
+              <p className="text-base font-medium text-gray-600">Active</p>
+              <p className="text-4xl font-bold text-blue-600 mt-3">
                 {totalActive}
               </p>
             </div>
-            <TrendingUp className="w-12 h-12 text-blue-600 opacity-20" />
+            <TrendingUp className="w-14 h-14 text-blue-600 opacity-20" />
           </div>
-          <p className="text-xs text-gray-500 mt-3">
+          <p className="text-sm text-gray-500 mt-4">
             In-progress transactions
           </p>
         </div>
 
         {/* Completed This Week */}
-        <div className="bg-white rounded-lg border-2 border-green-200 p-6">
+        <div className="bg-white rounded-lg border-2 border-green-200 p-7">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">This Week</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
+              <p className="text-base font-medium text-gray-600">This Week</p>
+              <p className="text-4xl font-bold text-green-600 mt-3">
                 {thisWeekCompleted}
               </p>
             </div>
-            <CheckCircle className="w-12 h-12 text-green-600 opacity-20" />
+            <CheckCircle className="w-14 h-14 text-green-600 opacity-20" />
           </div>
-          <p className="text-xs text-gray-500 mt-3">
+          <p className="text-sm text-gray-500 mt-4">
             Completed transactions
           </p>
         </div>
       </div>
 
       {/* Action Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <ActionCard
           icon={FileText}
           title="Create Transaction"
@@ -119,8 +119,8 @@ export function TransactionOverview() {
 
         <ActionCard
           icon={Eye}
-          title="View All Transactions"
-          description="Browse and manage all transactions"
+          title="View All Client Transactions"
+          description="Browse and manage all transactions with clients"
           onClick={() => setShowViewAllModal(true)}
         />
 
@@ -136,8 +136,8 @@ export function TransactionOverview() {
       </div>
 
       {/* Helpful Note */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-800">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
+        <p className="text-base text-blue-800">
           💡 <strong>Tip:</strong> Use the <strong>Tasks</strong> section at the top to perform workflow actions (generate quotes, ship orders, send invoices, etc.)
         </p>
       </div>

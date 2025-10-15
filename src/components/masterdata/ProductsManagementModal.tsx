@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProducts, createProduct, updateProduct, deleteProduct, type Product, type CreateProductDto, type UpdateProductDto } from '../../lib/api/products';
-import { Plus, Edit, Trash2, Package, X, TrendingUp, Boxes } from 'lucide-react';
+import { getProductsWithStock, createProduct, updateProduct, deleteProduct, type Product, type CreateProductDto, type UpdateProductDto } from '../../lib/api/products';
+import { Plus, Edit, Trash2, Package, X, TrendingUp, Boxes, Printer } from 'lucide-react';
 import { showSuccess, showError } from '../../lib/toast';
 import { SearchInput } from '../common/SearchInput';
 import { useSearchFilter } from '../../hooks/useSearchFilter';
@@ -9,6 +9,8 @@ import { FilterDropdown, type FilterOption } from '../common/FilterDropdown';
 import { PriceHistoryModal } from './PriceHistoryModal';
 import { ProductFormModal } from '../products/ProductFormModal';
 import { ProductBatchesModal } from '../inventory/ProductBatchesModal';
+import { getInventoryBatches, type InventoryBatch } from '../../lib/api/inventory';
+import { BatchLabelPrintDialog } from '../inventory/BatchLabelPrintDialog';
 
 interface ProductsManagementModalProps {
   isOpen: boolean;
@@ -21,10 +23,12 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [priceHistoryProduct, setPriceHistoryProduct] = useState<Product | null>(null);
   const [batchViewProduct, setBatchViewProduct] = useState<Product | null>(null);
+  const [batchesForPrint, setBatchesForPrint] = useState<InventoryBatch[]>([]);
+  const [showBatchPrintDialog, setShowBatchPrintDialog] = useState(false);
 
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ['products'],
-    queryFn: getProducts,
+    queryKey: ['products-with-stock'],
+    queryFn: getProductsWithStock,
     enabled: isOpen,
   });
 
@@ -120,6 +124,42 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
     }
   };
 
+  const handlePrintBarcode = async (product: Product) => {
+    try {
+      // Fetch batches for this product
+      const batches = await getInventoryBatches(product.id);
+
+      if (batches.length === 0) {
+        showError('No inventory batches available for this product');
+        return;
+      }
+
+      if (batches.length === 1) {
+        // Single batch - download directly
+        const batch = batches[0];
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/inventory/batches/label/${batch.batchNumber}`
+        );
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `label-${batch.batchNumber}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        showSuccess('Barcode label downloaded');
+      } else {
+        // Multiple batches - show selection dialog
+        setBatchesForPrint(batches);
+        setShowBatchPrintDialog(true);
+      }
+    } catch (error: any) {
+      showError(error?.message || 'Failed to fetch batches');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -127,28 +167,33 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3
+  sm:px-6 sm:py-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between
+   gap-3 md:gap-4">
               {/* Left side - Title with mobile close button */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Package className="w-6 h-6 text-green-600" />
                   <div>
-                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Manage Products</h2>
+                    <h2 className="text-lg sm:text-xl font-semibold
+  text-gray-900">Manage Products</h2>
                     <p className="text-xs sm:text-sm text-gray-500">
-                      {searchQuery ? `${filteredProducts.length} of ${products.length}` : `${products.length}`} product{products.length !== 1 ? 's' : ''}
+                      {searchQuery ? `${filteredProducts.length} of ${products.length}`
+                        : `${products.length}`} product{products.length !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </div>
                 {/* Close button - Mobile only */}
-                <button onClick={onClose} className="md:hidden text-gray-400 hover:text-gray-600">
+                <button onClick={onClose} className="md:hidden text-gray-400
+  hover:text-gray-600">
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
               {/* Right side - Search, filters, and actions */}
-              <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-                <div className="flex-1 md:flex-initial min-w-0">
+              <div className="flex items-center gap-2 md:gap-3 flex-wrap md:flex-nowrap">
+                <div className="w-full sm:w-auto sm:min-w-[200px] sm:max-w-xs">
                   <SearchInput
                     value={searchQuery}
                     onChange={setSearchQuery}
@@ -156,7 +201,7 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
                     className="w-full"
                   />
                 </div>
-                <div className="hidden lg:flex items-center gap-2">
+                <div className="hidden xl:flex items-center gap-2">
                   <FilterDropdown
                     label="Category"
                     options={categoryFilters}
@@ -175,13 +220,14 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
                 </div>
                 <button
                   onClick={handleAdd}
-                  className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap"
+                  className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-green-600
+  text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap"
                 >
                   <Plus className="w-5 h-5" />
                   <span className="hidden sm:inline">Add Product</span>
                 </button>
-                {/* Close button - Desktop only */}
-                <button onClick={onClose} className="hidden md:block text-gray-400 hover:text-gray-600">
+                <button onClick={onClose} className="hidden md:block text-gray-400
+  hover:text-gray-600">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -213,70 +259,98 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>
-                        {product.sku && (
-                          <p className="text-xs text-gray-500 mt-0.5">SKU: {product.sku}</p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setPriceHistoryProduct(product)}
-                          className="p-1.5 text-purple-600 hover:bg-purple-50 rounded"
-                          title="View Price History"
-                        >
-                          <TrendingUp className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setBatchViewProduct(product)}
-                          className="p-1.5 text-green-600 hover:bg-green-50 rounded"
-                          title="View Inventory Batches"
-                        >
-                          <Boxes className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product)}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5 text-sm">
-                      {product.description && (
-                        <p className="text-gray-600 text-xs">{product.description}</p>
-                      )}
-                      {product.manufacturer && (
-                        <p className="text-xs text-gray-600">
-                          <span className="font-medium">Brand:</span> {product.manufacturer}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-4 pt-2 border-t border-gray-100 text-xs text-gray-500">
-                        <p>Unit: <span className="font-medium text-gray-700">{product.unit || 'N/A'}</span></p>
-                        <p>Type: <span className="font-medium text-gray-700 capitalize">{product.stockType.replace('_', ' ')}</span></p>
-                        {!product.isActive && (
-                          <span className="px-2 py-0.5 bg-gray-200 text-gray-600 rounded text-xs font-medium">Inactive</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Product Name
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Quantity Available
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredProducts.map((product) => (
+                      <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-gray-900">{product.name}</h3>
+                              {!product.isActive && (
+                                <span className="px-2 py-0.5 bg-gray-200 text-gray-600 rounded text-xs font-medium">
+                                  Inactive
+                                </span>
+                              )}
+                            </div>
+                            {product.sku && (
+                              <p className="text-xs text-gray-500 mt-0.5">SKU: {product.sku}</p>
+                            )}
+                            {product.description && (
+                              <p className="text-xs text-gray-600 mt-1">{product.description}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                              {product.manufacturer && (
+                                <span>Brand: {product.manufacturer}</span>
+                              )}
+                              {product.unit && <span>• Unit: {product.unit}</span>}
+                              <span>• Type: <span className="capitalize">{product.stockType.replace('_', ' ')}</span></span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`font-semibold text-lg ${
+                            product.stockLevel?.available
+                              ? product.stockLevel.available > 0
+                                ? 'text-green-600'
+                                : 'text-gray-400'
+                              : 'text-gray-400'
+                          }`}>
+                            {product.stockLevel?.available ?? 0}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2 flex-wrap">
+                            <button
+                              onClick={() => setBatchViewProduct(product)}
+                              className="px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-50 rounded transition-colors border border-green-200"
+                            >
+                              View Batches
+                            </button>
+                            <button
+                              onClick={() => handlePrintBarcode(product)}
+                              className="px-3 py-1 text-xs font-medium text-purple-700 hover:bg-purple-50 rounded transition-colors border border-purple-200"
+                            >
+                              Print Barcode
+                            </button>
+                            <button
+                              onClick={() => setPriceHistoryProduct(product)}
+                              className="px-3 py-1 text-xs font-medium text-orange-700 hover:bg-orange-50 rounded transition-colors border border-orange-200"
+                            >
+                              Price History
+                            </button>
+                            <button
+                              onClick={() => handleEdit(product)}
+                              className="px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 rounded transition-colors border border-blue-200"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(product)}
+                              className="px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 rounded transition-colors border border-red-200"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -319,6 +393,23 @@ export function ProductsManagementModal({ isOpen, onClose }: ProductsManagementM
           onClose={() => setBatchViewProduct(null)}
           productId={batchViewProduct.id}
           productName={batchViewProduct.name}
+        />
+      )}
+
+      {/* Batch Label Print Dialog */}
+      {showBatchPrintDialog && batchesForPrint.length > 0 && (
+        <BatchLabelPrintDialog
+          isOpen={showBatchPrintDialog}
+          onClose={() => {
+            setShowBatchPrintDialog(false);
+            setBatchesForPrint([]);
+          }}
+          batches={batchesForPrint.map(batch => ({
+            batchNumber: batch.batchNumber,
+            productName: batch.product?.name || 'Unknown Product',
+            quantity: batch.originalQuantity,
+            location: batch.location || 'Unknown'
+          }))}
         />
       )}
     </>

@@ -192,92 +192,102 @@ export function SuppliersManagementModal({ isOpen, onClose }: SuppliersManagemen
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredSuppliers.map((supplier) => (
-                  <div
-                    key={supplier.id}
-                    className={`bg-white rounded-lg border p-4 hover:shadow-md transition-shadow ${!supplier.isActive ? 'border-gray-300 opacity-75' : 'border-gray-200'}`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{supplier.name}</h3>
-                        {supplier.isActive ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                            <CheckCircle className="w-3 h-3" />
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                            <XCircle className="w-3 h-3" />
-                            Inactive
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => setPriceHistorySupplier(supplier)}
-                          className="p-1.5 text-purple-600 hover:bg-purple-50 rounded"
-                          title="View Price History"
-                        >
-                          <TrendingUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleToggleActive(supplier)}
-                          className={`p-1.5 rounded ${supplier.isActive ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}
-                          title={supplier.isActive ? 'Deactivate' : 'Activate'}
-                        >
-                          {supplier.isActive ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => handleEdit(supplier)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                          title="Edit"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(supplier)}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5 text-sm">
-                      {supplier.contactPerson && (
-                        <p className="text-xs text-gray-600">
-                          <span className="font-medium">Contact:</span> {supplier.contactPerson}
-                        </p>
-                      )}
-                      {supplier.email && (
-                        <p className="text-xs text-gray-600 truncate">
-                          <span className="font-medium">Email:</span> {supplier.email}
-                        </p>
-                      )}
-                      {supplier.phone && (
-                        <p className="text-xs text-gray-600">
-                          <span className="font-medium">Phone:</span> {supplier.phone}
-                        </p>
-                      )}
-                      <div className="pt-2 border-t border-gray-100 grid grid-cols-2 gap-2">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 text-yellow-500" />
-                          <span className="text-xs text-gray-600">
-                            {Number(supplier.reliabilityScore).toFixed(1)}/5.0
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-blue-500" />
-                          <span className="text-xs text-gray-600">
-                            {supplier.averageLeadTime}d
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Supplier Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Contact Person
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredSuppliers.map((supplier) => (
+                      <tr key={supplier.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-gray-900">{supplier.name}</h3>
+                              {supplier.isActive ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                                  <CheckCircle className="w-3 h-3" />
+                                  Active
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                  <XCircle className="w-3 h-3" />
+                                  Inactive
+                                </span>
+                              )}
+                            </div>
+                            {supplier.email && (
+                              <p className="text-xs text-gray-500 mt-0.5 truncate">Email: {supplier.email}</p>
+                            )}
+                            {supplier.phone && (
+                              <p className="text-xs text-gray-500 mt-0.5">Phone: {supplier.phone}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <Star className="w-3 h-3 text-yellow-500" />
+                                <span>{Number(supplier.reliabilityScore).toFixed(1)}/5.0</span>
+                              </div>
+                              <span>•</span>
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-blue-500" />
+                                <span>{supplier.averageLeadTime}d lead time</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {supplier.contactPerson ? (
+                            <span className="text-sm text-gray-900">{supplier.contactPerson}</span>
+                          ) : (
+                            <span className="text-sm text-gray-400">No contact person</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2 flex-wrap">
+                            <button
+                              onClick={() => setPriceHistorySupplier(supplier)}
+                              className="px-3 py-1 text-xs font-medium text-purple-700 hover:bg-purple-50 rounded transition-colors border border-purple-200"
+                            >
+                              Price History
+                            </button>
+                            <button
+                              onClick={() => handleEdit(supplier)}
+                              className="px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 rounded transition-colors border border-blue-200"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleToggleActive(supplier)}
+                              className={`px-3 py-1 text-xs font-medium rounded transition-colors border ${
+                                supplier.isActive
+                                  ? 'text-orange-700 hover:bg-orange-50 border-orange-200'
+                                  : 'text-green-700 hover:bg-green-50 border-green-200'
+                              }`}
+                            >
+                              {supplier.isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button
+                              onClick={() => handleDelete(supplier)}
+                              className="px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 rounded transition-colors border border-red-200"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

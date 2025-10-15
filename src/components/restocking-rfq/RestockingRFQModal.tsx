@@ -8,8 +8,8 @@ import { showSuccess, showError, showWarning } from '../../lib/toast';
 import { SupplierFormModal } from '../masterdata/SupplierFormModal';
 import { ProductFormModal } from '../products/ProductFormModal';
 import type { ProductQuantity } from '../../lib/api/restocking-rfq';
-import type { Supplier, CreateSupplierDto } from '../../lib/api/suppliers';
-import type { CreateProductDto } from '../../lib/api/products';
+import type { Supplier, CreateSupplierDto, UpdateSupplierDto } from '../../lib/api/suppliers';
+import type { CreateProductDto, UpdateProductDto } from '../../lib/api/products';
 
 interface RestockingRFQModalProps {
   isOpen: boolean;
@@ -133,9 +133,9 @@ export function RestockingRFQModal({
     ]);
   };
 
-  const handleCreateSupplier = async (data: CreateSupplierDto) => {
+  const handleCreateSupplier = async (data: CreateSupplierDto | UpdateSupplierDto) => {
     try {
-      const newSupplier = await createSupplierMutation.mutateAsync(data);
+      const newSupplier = await createSupplierMutation.mutateAsync(data as CreateSupplierDto);
 
       // Refetch suppliers cache to ensure the dropdown updates immediately
       await queryClient.refetchQueries({ queryKey: ['suppliers'] });
@@ -159,9 +159,9 @@ export function RestockingRFQModal({
     }
   };
 
-  const handleCreateProduct = async (data: CreateProductDto) => {
+  const handleCreateProduct = async (data: CreateProductDto | UpdateProductDto) => {
     try {
-      const newProduct = await createProductMutation.mutateAsync(data);
+      const newProduct = await createProductMutation.mutateAsync(data as CreateProductDto);
 
       // Refetch products cache to ensure the dropdown updates immediately
       await queryClient.refetchQueries({ queryKey: ['products-with-stock'] });

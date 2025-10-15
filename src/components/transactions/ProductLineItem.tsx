@@ -13,6 +13,12 @@ interface Product {
   id: string
   name: string
   category?: 'consumable' | 'non-consumable'
+  stockType?: 'stocked' | 'non_stocked'
+  stockLevel?: {
+    onHand: number
+    allocated: number
+    available: number
+  }
 }
 
 interface ProductLineItemProps {
@@ -84,7 +90,13 @@ export function ProductLineItem({
           <SmartComboBox
             label="Product"
             placeholder="Search products or type new name..."
-            options={products.map(p => ({ id: p.id, name: p.name }))}
+            options={products.map(p => ({
+              id: p.id,
+              name: p.name,
+              additionalInfo: p.stockType === 'stocked' && p.stockLevel
+                ? `Stock: ${p.stockLevel.available}`
+                : undefined
+            }))}
             onSelect={handleProductSelect}
             onCreate={handleProductCreate}
             value={selectedProduct}
@@ -93,7 +105,7 @@ export function ProductLineItem({
 
         {/* Quantity */}
         <div className="w-full sm:w-24">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-base font-medium text-gray-700 mb-2">
             Qty
           </label>
           <input
@@ -108,7 +120,7 @@ export function ProductLineItem({
                 onChange(index, { ...value, quantity: 1 })
               }
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full h-[50px] px-4 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Save, Plus, Trash2, Search, ChevronDown } from 'lucide-react'
 import type { Transaction, TransactionLineItem } from '../../lib/api/transactions'
-import type { Supplier, CreateSupplierDto } from '../../lib/api/suppliers'
+import type { Supplier, CreateSupplierDto, UpdateSupplierDto } from '../../lib/api/suppliers'
 import type { CreateSupplierQuoteDto } from '../../lib/api/quotes'
 import { SupplierFormModal } from '../masterdata/SupplierFormModal'
 import { useCreateSupplier } from '../../hooks/useSuppliers'
@@ -102,9 +102,9 @@ export function SupplierQuoteEntry({
     setIsSupplierDropdownOpen(false)
   }
 
-  const handleCreateSupplier = async (supplierData: CreateSupplierDto) => {
+  const handleCreateSupplier = async (supplierData: CreateSupplierDto | UpdateSupplierDto) => {
     try {
-      const newSupplier = await createSupplierMutation.mutateAsync(supplierData)
+      const newSupplier = await createSupplierMutation.mutateAsync(supplierData as CreateSupplierDto)
       // Automatically select the newly created supplier
       setSelectedSupplier(newSupplier)
       setSupplierSearchQuery(newSupplier.name)

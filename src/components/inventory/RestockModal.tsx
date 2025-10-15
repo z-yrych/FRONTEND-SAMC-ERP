@@ -8,7 +8,7 @@ import { useSuppliers, useCreateSupplier } from '../../hooks/useSuppliers'
 import { useProductsWithStock, useCreateProduct } from '../../hooks/useProductManagement'
 import { SupplierFormModal } from '../masterdata/SupplierFormModal'
 import { showSuccess, showError } from '../../lib/toast'
-import type { Supplier, CreateSupplierDto } from '../../lib/api/suppliers'
+import type { Supplier, CreateSupplierDto, UpdateSupplierDto } from '../../lib/api/suppliers'
 import type { Product } from '../../lib/api/products'
 
 interface RestockModalProps {
@@ -100,9 +100,9 @@ export function RestockModal({
     return { id: newSupplier.id, name: newSupplier.name }
   }
 
-  const handleCreateSupplierWithDetails = async (data: CreateSupplierDto) => {
+  const handleCreateSupplierWithDetails = async (data: CreateSupplierDto | UpdateSupplierDto) => {
     try {
-      const newSupplier = await createSupplierMutation.mutateAsync(data)
+      const newSupplier = await createSupplierMutation.mutateAsync(data as CreateSupplierDto)
 
       // Refetch suppliers cache to ensure the dropdown updates immediately
       await queryClient.refetchQueries({ queryKey: ['suppliers'] })
@@ -284,7 +284,7 @@ export function RestockModal({
                     type="button"
                     onClick={() => setShowSupplierModal(true)}
                     disabled={createRestockingPOMutation.isPending}
-                    className="sm:mt-6 w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    className="sm:mt-8 w-full sm:w-auto h-[50px] flex items-center justify-center gap-2 px-4 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
                   >
                     <Plus className="w-4 h-4" />
                     Add New Supplier
@@ -300,7 +300,7 @@ export function RestockModal({
 
             {/* Expected Delivery Date */}
             <div>
-              <label htmlFor="expectedDelivery" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="expectedDelivery" className="block text-base font-medium text-gray-700 mb-2">
                 Expected Delivery Date <span className="text-red-500">*</span>
               </label>
               <input
@@ -310,7 +310,7 @@ export function RestockModal({
                 onChange={(e) => setExpectedDeliveryDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
                 required
-                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="w-full h-[50px] px-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 disabled={createRestockingPOMutation.isPending}
               />
               {expectedDeliveryDate && new Date(expectedDeliveryDate) <= new Date() && (

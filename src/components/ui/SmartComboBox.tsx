@@ -5,6 +5,7 @@ import { useKeyboardAwareViewport } from '../../hooks/useKeyboardAwareViewport'
 interface Option {
   id: string
   name: string
+  additionalInfo?: string
 }
 
 interface SmartComboBoxProps {
@@ -92,7 +93,7 @@ export function SmartComboBox({
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label className="block text-base font-medium text-gray-700 mb-2">
         {label}{required && <span className="text-red-600 ml-1">*</span>}
       </label>
 
@@ -112,19 +113,19 @@ export function SmartComboBox({
           placeholder={placeholder}
           required={required}
           disabled={disabled}
-          className="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="w-full h-[50px] pl-4 pr-11 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
 
         <button
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
         >
           {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-5 w-5" />
           )}
         </button>
       </div>
@@ -138,9 +139,12 @@ export function SmartComboBox({
                   key={option.id}
                   type="button"
                   onClick={() => handleSelect(option)}
-                  className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100"
+                  className="w-full px-4 py-3 text-base text-left hover:bg-gray-100 focus:bg-gray-100 flex justify-between items-center"
                 >
-                  {option.name}
+                  <span>{option.name}</span>
+                  {option.additionalInfo && (
+                    <span className="text-sm text-gray-500 ml-2">{option.additionalInfo}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -151,19 +155,19 @@ export function SmartComboBox({
               type="button"
               onClick={handleCreate}
               disabled={isCreating}
-              className="w-full px-3 py-2 text-left text-blue-600 hover:bg-blue-50 focus:bg-blue-50 border-t border-gray-200 flex items-center gap-2"
+              className="w-full px-4 py-3 text-base text-left text-blue-600 hover:bg-blue-50 focus:bg-blue-50 border-t border-gray-200 flex items-center gap-2"
             >
               {isCreating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
               )}
               Create "{searchQuery}"
             </button>
           )}
 
           {filteredOptions.length === 0 && !showCreateOption && (
-            <div className="px-3 py-2 text-gray-500 text-sm">
+            <div className="px-4 py-3 text-gray-500 text-base">
               No options found
             </div>
           )}

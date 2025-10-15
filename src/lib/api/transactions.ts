@@ -102,6 +102,7 @@ export interface TransactionLineItem {
 }
 
 export interface Transaction {
+  transactionType: string
   id: string
   transactionNumber: string
   client: Client
@@ -109,6 +110,9 @@ export interface Transaction {
   totalAmount: number
   lineItems: TransactionLineItem[]
   notes?: string
+  cancellationReason?: string
+  cancelledBy?: string
+  cancelledAt?: string
   createdAt: string
   updatedAt: string
   // Add backorders property for procurement
@@ -195,6 +199,7 @@ export interface TransactionOverviewStats {
   needClientQuotes: number
   needSupplierQuotes: number
   needSourcingForOrders: number
+  waitingForRestockingPOs?: number
   canShip: number
   canDeliver: number
   canGenerateInvoice: number
@@ -241,5 +246,39 @@ export async function fetchTransactionsRequiringAction(
   actionType: TransactionActionType
 ): Promise<Transaction[]> {
   const response = await api.get(`/transactions/requiring-action/${actionType}`)
+  return response.data
+}
+
+// Cancellation Impact
+export interface CancellationImpact {
+  canCancel: boolean
+  warnings: string[]
+  impacts: {
+    stockAllocations: number
+    backorders: number
+    invoices: { count: number; totalAmount: number }
+    payments: { count: number; totalAmount: number }
+    quotes: number
+  }
+  requiresApproval: boolean
+  recommendations: string[]
+}
+
+// Get cancellation impact analysis
+export async function getCancellationImpact(transactionId: string): Promise<CancellationImpact> {
+  const response = await api.get(`/transactions/${transactionId}/cancellation-impact`)
+  return response.data
+}
+
+// Cancel transaction
+export async function cancelTransaction(
+  transactionId: string,
+  reason: string,
+  cancelledBy?: string
+): Promise<Transaction> {
+  const response = await api.post(`/transactions/${transactionId}/cancel`, {
+    reason,
+    cancelledBy
+  })
   return response.data
 }

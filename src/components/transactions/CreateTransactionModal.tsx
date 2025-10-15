@@ -22,6 +22,7 @@ export function CreateTransactionModal({
   products = []
 }: CreateTransactionModalProps) {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [transactionType, setTransactionType] = useState<'rfq' | 'client_po'>('rfq')
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { quantity: 1, isNew: false }
   ])
@@ -91,6 +92,7 @@ export function CreateTransactionModal({
           ? { clientName: selectedClient.name }
           : { clientId: selectedClient.id }
         ),
+        transactionType,
         lineItems: lineItems.map(item => ({
           // For existing products, send ID. For new products, send only name
           ...(item.productId?.startsWith('new-')
@@ -126,20 +128,56 @@ export function CreateTransactionModal({
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Create New Transaction</h2>
+        <div className="flex items-center justify-between p-7 border-b border-gray-200">
+          <h2 className="text-2xl font-semibold text-gray-900">Create New Transaction</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+            className="p-2 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+        <div className="p-7 space-y-7 overflow-y-auto flex-1">
+          {/* Transaction Type */}
+          <div>
+            <h3 className="text-xl font-medium text-gray-900 mb-5">TRANSACTION TYPE</h3>
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value="rfq"
+                  checked={transactionType === 'rfq'}
+                  onChange={(e) => setTransactionType(e.target.value as 'rfq' | 'client_po')}
+                  className="w-5 h-5 text-blue-600"
+                />
+                <span className="text-base font-medium text-gray-700">
+                  RFQ (Request for Quotation)
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  value="client_po"
+                  checked={transactionType === 'client_po'}
+                  onChange={(e) => setTransactionType(e.target.value as 'rfq' | 'client_po')}
+                  className="w-5 h-5 text-blue-600"
+                />
+                <span className="text-base font-medium text-gray-700">
+                  Client PO (Purchase Order - Deal Closed)
+                </span>
+              </label>
+            </div>
+            {transactionType === 'client_po' && (
+              <p className="mt-3 text-base text-gray-500">
+                Client has already committed to purchase. Quote steps will be skipped.
+              </p>
+            )}
+          </div>
+
           {/* Client Information */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">CLIENT INFORMATION</h3>
+            <h3 className="text-xl font-medium text-gray-900 mb-5">CLIENT INFORMATION</h3>
             <SmartComboBox
               label="Client"
               placeholder="Search existing clients or type to create new..."
@@ -152,14 +190,14 @@ export function CreateTransactionModal({
 
           {/* Product Line Items */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">PRODUCT LINE ITEMS</h3>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-xl font-medium text-gray-900">PRODUCT LINE ITEMS</h3>
               <button
                 type="button"
                 onClick={handleAddLineItem}
-                className="flex items-center gap-2 px-3 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
+                className="flex items-center gap-2 px-4 py-2.5 text-base font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
                 Add Product
               </button>
             </div>
@@ -180,9 +218,9 @@ export function CreateTransactionModal({
 
           {/* Transaction Details */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">TRANSACTION DETAILS</h3>
+            <h3 className="text-xl font-medium text-gray-900 mb-5">TRANSACTION DETAILS</h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-base font-medium text-gray-700 mb-2">
                 Description
               </label>
               <textarea
@@ -190,24 +228,24 @@ export function CreateTransactionModal({
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Multi-line text area for client's request..."
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+        <div className="flex justify-end gap-4 p-7 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+            className="px-6 py-3 text-base font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!isValid() || createTransactionMutation.isPending}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 text-base font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {createTransactionMutation.isPending ? 'Creating...' : 'Save as Draft'}
           </button>

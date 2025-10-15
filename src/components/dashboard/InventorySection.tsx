@@ -69,15 +69,15 @@ export function InventorySection() {
   return (
     <div className="space-y-6">
       {/* Section Header */}
-      <div className="border-b border-gray-200 pb-4">
-        <h2 className="text-2xl font-bold text-gray-900">Inventory Management</h2>
-        <p className="mt-1 text-sm text-gray-600">
+      <div className="border-b border-gray-200 pb-5">
+        <h2 className="text-3xl font-bold text-gray-900">Inventory Management</h2>
+        <p className="mt-2 text-base text-gray-600">
           Manage your product catalog and inventory levels
         </p>
       </div>
 
       {/* Action Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Row 1 */}
         <ActionCard
           icon={Package}

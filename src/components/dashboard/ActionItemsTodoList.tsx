@@ -826,12 +826,12 @@ export function ActionItemsTodoList() {
 
   if (totalCount === 0) {
     return (
-      <div className="border-2 border-green-300 bg-green-50 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <CheckCircle className="w-8 h-8 text-green-600" />
+      <div className="border-2 border-green-300 bg-green-50 rounded-lg p-8">
+        <div className="flex items-center gap-4">
+          <CheckCircle className="w-10 h-10 text-green-600" />
           <div>
-            <h3 className="text-xl font-bold text-green-900">All Caught Up! 🎉</h3>
-            <p className="text-sm text-green-700 mt-1">
+            <h3 className="text-2xl font-bold text-green-900">All Caught Up! 🎉</h3>
+            <p className="text-base text-green-700 mt-1">
               No pending actions required at this time
             </p>
           </div>
@@ -844,25 +844,25 @@ export function ActionItemsTodoList() {
     <>
       <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b-2 border-gray-300">
-          <div className="flex items-center gap-3">
-            <ListTodo className="w-6 h-6 text-gray-700" />
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-7 py-5 border-b-2 border-gray-300">
+          <div className="flex items-center gap-4">
+            <ListTodo className="w-7 h-7 text-gray-700" />
             <div>
-              <h3 className="text-lg font-bold text-gray-900">Tasks</h3>
-              <div className="flex items-center gap-3 text-sm text-gray-600 mt-0.5">
+              <h3 className="text-2xl font-bold text-gray-900">Tasks</h3>
+              <div className="flex items-center gap-3 text-base text-gray-600 mt-1">
                 <span>{totalCount} item{totalCount !== 1 ? 's' : ''} requiring attention</span>
                 {criticalCount > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-semibold">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 rounded text-sm font-semibold">
                     🔴 {criticalCount} Critical
                   </span>
                 )}
                 {highCount > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs font-semibold">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-100 text-orange-700 rounded text-sm font-semibold">
                     🟠 {highCount} High
                   </span>
                 )}
                 {mediumCount > 0 && (
-                  <span className="text-xs text-gray-500">
+                  <span className="text-sm text-gray-500">
                     {mediumCount} medium priority
                   </span>
                 )}
@@ -878,27 +878,27 @@ export function ActionItemsTodoList() {
             return (
               <div
                 key={item.id}
-                className={`px-6 py-3 hover:bg-gray-50 transition-colors border-l-4 ${item.borderColor}`}
+                className={`px-7 py-4 hover:bg-gray-50 transition-colors border-l-4 ${item.borderColor}`}
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="flex items-start gap-4 flex-1 min-w-0">
                     {/* Icon */}
-                    <div className="flex-shrink-0 mt-0.5">
-                      <Icon className={`w-5 h-5 ${item.iconColor}`} />
+                    <div className="flex-shrink-0 mt-1">
+                      <Icon className={`w-6 h-6 ${item.iconColor}`} />
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-gray-900 text-sm mb-0.5 truncate">
+                      <h4 className="font-semibold text-gray-900 text-base mb-1 truncate">
                         {item.title}
                       </h4>
-                      <p className="text-xs text-gray-600 line-clamp-2">
+                      <p className="text-sm text-gray-600 line-clamp-2">
                         {item.description}
                       </p>
 
                       {/* Priority Badge */}
-                      <div className="mt-1.5">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                      <div className="mt-2">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-sm font-medium ${
                           item.priority === 'critical'
                             ? 'bg-red-100 text-red-800'
                             : item.priority === 'high'
@@ -916,7 +916,7 @@ export function ActionItemsTodoList() {
                   {/* Action Button */}
                   <button
                     onClick={item.action}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                    className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                       item.priority === 'critical'
                         ? 'bg-red-600 hover:bg-red-700 text-white'
                         : item.priority === 'high'
@@ -925,7 +925,7 @@ export function ActionItemsTodoList() {
                     }`}
                   >
                     {item.actionLabel}
-                    <ChevronRight className="w-3 h-3" />
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>

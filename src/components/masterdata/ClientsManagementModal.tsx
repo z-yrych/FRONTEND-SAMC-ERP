@@ -153,64 +153,75 @@ export function ClientsManagementModal({ isOpen, onClose }: ClientsManagementMod
                 ) : (
                   <>
                     <p className="text-gray-500 mb-4">No clients yet</p>
-                    <button
-                      onClick={handleAdd}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                      Add Your First Client
-                    </button>
                   </>
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredClients.map((client) => (
-                  <div
-                    key={client.id}
-                    className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(client)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(client)}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5 text-sm">
-                      {client.email && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Mail className="w-4 h-4 flex-shrink-0" />
-                          <span className="truncate">{client.email}</span>
-                        </div>
-                      )}
-                      {client.phone && (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Phone className="w-4 h-4 flex-shrink-0" />
-                          <span>{client.phone}</span>
-                        </div>
-                      )}
-                      {client.address && (
-                        <div className="flex items-start gap-2 text-gray-600">
-                          <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                          <span className="text-xs">{client.address}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Client Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Contact Information
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredClients.map((client) => (
+                      <tr key={client.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{client.name}</h3>
+                            {client.address && (
+                              <p className="text-xs text-gray-600 mt-1">{client.address}</p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="space-y-1">
+                            {client.email && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <Mail className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{client.email}</span>
+                              </div>
+                            )}
+                            {client.phone && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <Phone className="w-4 h-4 flex-shrink-0" />
+                                <span>{client.phone}</span>
+                              </div>
+                            )}
+                            {!client.email && !client.phone && (
+                              <span className="text-sm text-gray-400">No contact info</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2 flex-wrap">
+                            <button
+                              onClick={() => handleEdit(client)}
+                              className="px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 rounded transition-colors border border-blue-200"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(client)}
+                              className="px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 rounded transition-colors border border-red-200"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

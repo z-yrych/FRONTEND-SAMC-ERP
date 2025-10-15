@@ -13,8 +13,8 @@ export function TransactionsTable({ transactions, isLoading, onRowClick }: Trans
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-        <span className="ml-2 text-gray-600">Loading transactions...</span>
+        <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+        <span className="ml-3 text-base text-gray-600">Loading transactions...</span>
       </div>
     )
   }
@@ -22,8 +22,8 @@ export function TransactionsTable({ transactions, isLoading, onRowClick }: Trans
   if (transactions.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="text-gray-400 text-lg mb-2">No transactions found</div>
-        <p className="text-gray-500">Create your first transaction to get started</p>
+        <div className="text-gray-400 text-xl mb-2">No transactions found</div>
+        <p className="text-base text-gray-500">Create your first transaction to get started</p>
       </div>
     )
   }
@@ -33,11 +33,11 @@ export function TransactionsTable({ transactions, isLoading, onRowClick }: Trans
       <table className="w-full">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50">
-            <th className="text-left p-4 font-medium text-gray-700">Transaction #</th>
-            <th className="text-left p-4 font-medium text-gray-700">Client Name</th>
-            <th className="text-left p-4 font-medium text-gray-700">Status</th>
-            <th className="text-left p-4 font-medium text-gray-700">Date</th>
-            <th className="w-16"></th>
+            <th className="text-left p-5 text-base font-semibold text-gray-900">Transaction #</th>
+            <th className="text-left p-5 text-base font-semibold text-gray-900">Client Name</th>
+            <th className="text-left p-5 text-base font-semibold text-gray-900">Status</th>
+            <th className="text-left p-5 text-base font-semibold text-gray-900">Date</th>
+            <th className="w-20"></th>
           </tr>
         </thead>
         <tbody>
@@ -47,34 +47,34 @@ export function TransactionsTable({ transactions, isLoading, onRowClick }: Trans
               className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
               onClick={() => onRowClick(transaction.id)}
             >
-              <td className="p-4">
-                <span className="font-mono text-sm font-medium text-blue-600">
+              <td className="p-5">
+                <span className="font-mono text-base font-medium text-blue-600">
                   {transaction.transactionNumber}
                 </span>
               </td>
-              <td className="p-4">
-                <span className="font-medium text-gray-900">
+              <td className="p-5">
+                <span className="text-base font-medium text-gray-900">
                   {transaction.client.name}
                 </span>
               </td>
-              <td className="p-4">
-                <StatusBadge status={transaction.status} size="sm" />
+              <td className="p-5">
+                <StatusBadge status={transaction.status} size="md" />
               </td>
 
-              <td className="p-4">
-                <span className="text-gray-600">
+              <td className="p-5">
+                <span className="text-base text-gray-600">
                   {format(new Date(transaction.createdAt), 'MMM d, yyyy')}
                 </span>
               </td>
-              <td className="p-4">
+              <td className="p-5">
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     onRowClick(transaction.id)
                   }}
-                  className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600"
+                  className="p-2 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600"
                 >
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-5 w-5" />
                 </button>
               </td>
             </tr>
