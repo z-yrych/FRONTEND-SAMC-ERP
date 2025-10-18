@@ -759,8 +759,8 @@ export function TransactionDetailsPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4">
-          <div className="space-y-4">
+        <div className="px-4 sm:px-6 py-3">
+          <div className="space-y-2">
             {/* Top row: Back button and Menu button */}
             <div className="flex items-center justify-between">
               <button
@@ -782,14 +782,14 @@ export function TransactionDetailsPage() {
 
             {/* Transaction info below */}
             <div>
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
+              <h1 className="text-base sm:text-xl font-bold text-gray-900 truncate">
                 TRANSACTION #{transaction.transactionNumber}
               </h1>
-              <p className="text-sm sm:text-base text-gray-600 truncate">
+              <p className="text-xs sm:text-sm text-gray-600 truncate">
                 CLIENT: {transaction.client.name}
               </p>
               <div className="flex items-center gap-2 sm:gap-4">
-                <span className="text-xs sm:text-sm font-medium
+                <span className="text-xs font-medium
   text-gray-700">OVERALL STATUS:</span>
                 <StatusBadge status={transaction.status} />
               </div>

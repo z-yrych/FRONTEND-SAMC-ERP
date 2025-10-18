@@ -135,7 +135,7 @@ export const ViewAllTransactionsModal: React.FC<ViewAllTransactionsModalProps> =
           <div className="flex items-center gap-3">
             <FileText className="w-6 h-6 text-blue-600" />
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">All Transactions</h2>
+              <h2 className="text-xl font-semibold text-gray-900">All Client Transactions</h2>
               <p className="text-sm text-gray-500">
                 {filteredTransactions.length} of {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
               </p>
