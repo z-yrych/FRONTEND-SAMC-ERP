@@ -129,3 +129,27 @@ export async function getPayments(filters: {
   });
   return response.data;
 }
+
+/**
+ * Generate and download invoice PDF
+ */
+export async function generateInvoicePDF(invoiceId: string): Promise<void> {
+  console.log('Generating invoice PDF:', invoiceId);
+
+  try {
+    const response = await api.get(`${API_BASE_URL}/invoices/${invoiceId}/pdf`, {
+      responseType: 'blob'
+    });
+
+    // Create blob URL and open in new tab
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, '_blank');
+
+    // Clean up the URL after a delay
+    setTimeout(() => window.URL.revokeObjectURL(url), 100);
+  } catch (error: any) {
+    console.error('Failed to generate invoice PDF:', error);
+    throw new Error(error.response?.data?.message || 'Failed to generate invoice PDF');
+  }
+}

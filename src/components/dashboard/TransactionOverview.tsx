@@ -57,56 +57,6 @@ export function TransactionOverview() {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Pending Actions */}
-        <div className="bg-white rounded-lg border-2 border-orange-200 p-7">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-base font-medium text-gray-600">Needs Action</p>
-              <p className="text-4xl font-bold text-orange-600 mt-3">
-                {needsAction}
-              </p>
-            </div>
-            <AlertCircle className="w-14 h-14 text-orange-600 opacity-20" />
-          </div>
-          <p className="text-sm text-gray-500 mt-4">
-            Transaction{needsAction !== 1 ? 's' : ''} requiring workflow actions
-          </p>
-        </div>
-
-        {/* Active Transactions */}
-        <div className="bg-white rounded-lg border-2 border-blue-200 p-7">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-base font-medium text-gray-600">Active</p>
-              <p className="text-4xl font-bold text-blue-600 mt-3">
-                {totalActive}
-              </p>
-            </div>
-            <TrendingUp className="w-14 h-14 text-blue-600 opacity-20" />
-          </div>
-          <p className="text-sm text-gray-500 mt-4">
-            In-progress transactions
-          </p>
-        </div>
-
-        {/* Completed This Week */}
-        <div className="bg-white rounded-lg border-2 border-green-200 p-7">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-base font-medium text-gray-600">This Week</p>
-              <p className="text-4xl font-bold text-green-600 mt-3">
-                {thisWeekCompleted}
-              </p>
-            </div>
-            <CheckCircle className="w-14 h-14 text-green-600 opacity-20" />
-          </div>
-          <p className="text-sm text-gray-500 mt-4">
-            Completed transactions
-          </p>
-        </div>
-      </div>
 
       {/* Action Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

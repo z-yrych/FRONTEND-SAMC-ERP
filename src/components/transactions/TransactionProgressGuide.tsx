@@ -211,7 +211,16 @@ export function TransactionProgressGuide({
       icon: <DollarSign className="w-5 h-5" />,
       description: 'Create and send an invoice to get paid.',
       instructions:
-        status === TransactionStatus.DELIVERED
+        status === TransactionStatus.READY_FOR_DELIVERY
+          ? [
+            `All items are ready! You can now create an invoice.`,
+            `Go to the "Invoicing & Payments" section below.`,
+            `Click "Generate Invoice".`,
+            `Review the invoice details and click "Create".`,
+            `Click "Send Invoice" to email it to the client.`,
+            `You can invoice before or after delivery.`,
+          ]
+          : status === TransactionStatus.DELIVERED
           ? [
             `The order is delivered! Time to bill the client.`,
             `Go to the "Invoicing & Payments" section below.`,
@@ -227,7 +236,7 @@ export function TransactionProgressGuide({
             `Enter the amount, date, and payment method.`,
             `The invoice balance will update automatically.`,
           ]
-          : [`⚠️ You can only invoice after the order is delivered.`],
+          : [`⚠️ You can invoice once all items are ready for delivery.`],
       substeps: [
         { label: 'Generate invoice', completed: hasInvoice },
         { label: 'Send invoice to client', completed: invoiceSent },
@@ -236,7 +245,7 @@ export function TransactionProgressGuide({
       status:
         isPaid
           ? 'completed'
-          : status === TransactionStatus.DELIVERED || status === TransactionStatus.COMPLETED
+          : status === TransactionStatus.READY_FOR_DELIVERY || status === TransactionStatus.DELIVERED || status === TransactionStatus.COMPLETED
           ? 'active'
           : 'locked'
     });

@@ -134,3 +134,49 @@ export async function fetchDashboardSummary(params: DateRangeParams = {}) {
   }
   return response.json();
 }
+
+export async function fetchRevenueDetails(params: DateRangeParams = {}) {
+  const query = buildQueryString(params);
+  const response = await fetch(`${API_BASE}/dashboard/revenue-details?${query}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch revenue details');
+  }
+  return response.json();
+}
+
+export async function fetchTransactionDetails(
+  params: DateRangeParams = {},
+  filters: { status?: string; type?: string } = {},
+  limit: number = 100
+) {
+  const query = buildQueryString(params);
+  const filterParams = new URLSearchParams();
+  if (filters.status) filterParams.append('status', filters.status);
+  if (filters.type) filterParams.append('type', filters.type);
+  filterParams.append('limit', limit.toString());
+
+  const fullQuery = query ? `${query}&${filterParams.toString()}` : filterParams.toString();
+  const response = await fetch(`${API_BASE}/dashboard/transaction-details?${fullQuery}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch transaction details');
+  }
+  return response.json();
+}
+
+export async function fetchConversionFunnel(params: DateRangeParams = {}) {
+  const query = buildQueryString(params);
+  const response = await fetch(`${API_BASE}/dashboard/conversion-funnel?${query}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch conversion funnel');
+  }
+  return response.json();
+}
+
+export async function fetchValueDistribution(params: DateRangeParams = {}) {
+  const query = buildQueryString(params);
+  const response = await fetch(`${API_BASE}/dashboard/value-distribution?${query}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch value distribution');
+  }
+  return response.json();
+}

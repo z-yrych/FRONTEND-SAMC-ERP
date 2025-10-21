@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronRight } from 'lucide-react';
 
 interface KPICardProps {
   title: string;
@@ -12,6 +13,8 @@ interface KPICardProps {
     isPositive: boolean;
   };
   loading?: boolean;
+  clickable?: boolean;
+  onClick?: () => void;
 }
 
 export function KPICard({
@@ -23,6 +26,8 @@ export function KPICard({
   subtitle,
   trend,
   loading = false,
+  clickable = false,
+  onClick,
 }: KPICardProps) {
   if (loading) {
     return (
@@ -34,8 +39,8 @@ export function KPICard({
     );
   }
 
-  return (
-    <div className={`bg-white rounded-lg border-2 ${borderColor} p-7 hover:shadow-md transition-shadow h-full flex flex-col`}>
+  const CardContent = (
+    <>
       <div className="flex items-start justify-between mb-auto">
         <div className="flex-1">
           <p className="text-base font-medium text-gray-600 h-6 leading-6">{title}</p>
@@ -54,8 +59,35 @@ export function KPICard({
         <Icon className={`w-14 h-14 ${iconColor} opacity-20 flex-shrink-0`} />
       </div>
       {subtitle && (
-        <p className="text-sm text-gray-500 mt-4">{subtitle}</p>
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-sm text-gray-500">{subtitle}</p>
+          {clickable && (
+            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+          )}
+        </div>
       )}
+      {!subtitle && clickable && (
+        <div className="flex justify-end mt-4">
+          <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+        </div>
+      )}
+    </>
+  );
+
+  if (clickable && onClick) {
+    return (
+      <button
+        onClick={onClick}
+        className={`bg-white rounded-lg border-2 ${borderColor} p-7 hover:shadow-lg transition-all h-full flex flex-col text-left w-full cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]`}
+      >
+        {CardContent}
+      </button>
+    );
+  }
+
+  return (
+    <div className={`bg-white rounded-lg border-2 ${borderColor} p-7 hover:shadow-md transition-shadow h-full flex flex-col`}>
+      {CardContent}
     </div>
   );
 }

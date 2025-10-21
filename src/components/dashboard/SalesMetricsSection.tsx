@@ -1,14 +1,25 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSalesMetrics } from '../../lib/api/dashboard';
 import type { DateRangeParams } from '../../lib/api/dashboard';
 import { KPICard } from './KPICard';
-import { DollarSign, FileText, TrendingUp, Target, CheckCircle } from 'lucide-react';
+import { DollarSign, FileText, TrendingUp, Target, CheckCircle, ChevronRight } from 'lucide-react';
+import { MetricDetailModal } from './MetricDetailModal';
+import type { MetricType } from './MetricDetailModal';
+import { TotalRevenueModalContent } from './modals/TotalRevenueModal';
+import { TotalTransactionsModalContent } from './modals/TotalTransactionsModal';
+import { CompletedTransactionsModalContent } from './modals/CompletedTransactionsModal';
+import { ConversionRateModalContent } from './modals/ConversionRateModal';
+import { AvgTransactionValueModalContent } from './modals/AvgTransactionValueModal';
+import { StatusBreakdownModalContent } from './modals/StatusBreakdownModal';
+import { RevenueTrendModalContent } from './modals/RevenueTrendModal';
 
 interface SalesMetricsSectionProps {
   dateParams: DateRangeParams;
 }
 
 export function SalesMetricsSection({ dateParams }: SalesMetricsSectionProps) {
+  const [openModal, setOpenModal] = useState<MetricType | null>(null);
   const { data: metrics, isLoading, error } = useQuery({
     queryKey: ['sales-metrics', dateParams],
     queryFn: () => fetchSalesMetrics(dateParams),
@@ -26,6 +37,63 @@ export function SalesMetricsSection({ dateParams }: SalesMetricsSectionProps) {
     return `₱${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const getModalTitle = (type: MetricType | null): string => {
+    if (!type) return '';
+    const titles: Record<MetricType, string> = {
+      totalRevenue: 'Total Revenue Details',
+      totalTransactions: 'Total Transactions Details',
+      completed: 'Completed Transactions Details',
+      conversionRate: 'Conversion Rate Analysis',
+      avgTransactionValue: 'Transaction Value Analysis',
+      statusBreakdown: 'Transaction Status Breakdown',
+      revenueTrend: 'Revenue Trend Analysis',
+    };
+    return titles[type];
+  };
+
+  const renderModalContent = () => {
+    if (!openModal) return null;
+
+    // Render specific modal content based on metric type
+    switch (openModal) {
+      case 'totalRevenue':
+        return <TotalRevenueModalContent dateParams={dateParams} />;
+
+      case 'totalTransactions':
+        return <TotalTransactionsModalContent dateParams={dateParams} />;
+
+      case 'completed':
+        return <CompletedTransactionsModalContent dateParams={dateParams} />;
+
+      case 'conversionRate':
+        return <ConversionRateModalContent dateParams={dateParams} />;
+
+      case 'avgTransactionValue':
+        return <AvgTransactionValueModalContent dateParams={dateParams} />;
+
+      case 'statusBreakdown':
+        return <StatusBreakdownModalContent dateParams={dateParams} />;
+
+      case 'revenueTrend':
+        return <RevenueTrendModalContent dateParams={dateParams} />;
+
+      default:
+        // Placeholder for other modals
+        return (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <p className="text-blue-800 text-center">
+                Detailed analytics for {getModalTitle(openModal)} will be displayed here.
+              </p>
+              <p className="text-blue-600 text-center mt-2 text-sm">
+                Coming soon: Charts, transaction lists, and detailed breakdowns
+              </p>
+            </div>
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="space-y-6" data-section="sales">
       {/* KPI Cards */}
@@ -38,6 +106,8 @@ export function SalesMetricsSection({ dateParams }: SalesMetricsSectionProps) {
           borderColor="border-green-200"
           subtitle="From completed transactions"
           loading={isLoading}
+          clickable={true}
+          onClick={() => setOpenModal('totalRevenue')}
         />
 
         <KPICard
@@ -48,6 +118,8 @@ export function SalesMetricsSection({ dateParams }: SalesMetricsSectionProps) {
           borderColor="border-blue-200"
           subtitle={metrics ? `${metrics.rfqCount} RFQs, ${metrics.poCount} POs` : 'RFQs and POs'}
           loading={isLoading}
+          clickable={true}
+          onClick={() => setOpenModal('totalTransactions')}
         />
 
         <KPICard
@@ -58,6 +130,8 @@ export function SalesMetricsSection({ dateParams }: SalesMetricsSectionProps) {
           borderColor="border-emerald-200"
           subtitle="Completed & delivered"
           loading={isLoading}
+          clickable={true}
+          onClick={() => setOpenModal('completed')}
         />
 
         <KPICard
@@ -68,6 +142,8 @@ export function SalesMetricsSection({ dateParams }: SalesMetricsSectionProps) {
           borderColor="border-purple-200"
           subtitle="RFQ to accepted/completed"
           loading={isLoading}
+          clickable={true}
+          onClick={() => setOpenModal('conversionRate')}
         />
       </div>
 
@@ -81,12 +157,20 @@ export function SalesMetricsSection({ dateParams }: SalesMetricsSectionProps) {
           borderColor="border-indigo-200"
           subtitle="Average value per completed transaction"
           loading={isLoading}
+          clickable={true}
+          onClick={() => setOpenModal('avgTransactionValue')}
         />
 
         {/* Status Breakdown Card */}
         {!isLoading && metrics && (
-          <div className="bg-white rounded-lg border-2 border-gray-200 p-7">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Transaction Status Breakdown</h3>
+          <button
+            onClick={() => setOpenModal('statusBreakdown')}
+            className="bg-white rounded-lg border-2 border-gray-200 p-7 hover:shadow-lg transition-all cursor-pointer text-left w-full transform hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-gray-900">Transaction Status Breakdown</h3>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
             <div className="space-y-2">
               {metrics.statusBreakdown
                 .filter(item => item.count > 0)
@@ -101,14 +185,20 @@ export function SalesMetricsSection({ dateParams }: SalesMetricsSectionProps) {
                   </div>
                 ))}
             </div>
-          </div>
+          </button>
         )}
       </div>
 
       {/* Revenue Trend Chart - Simplified table for now */}
       {!isLoading && metrics && metrics.revenueTrend.length > 0 && (
-        <div className="bg-white rounded-lg border-2 border-gray-200 p-7">
-          <h3 className="text-base font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+        <button
+          onClick={() => setOpenModal('revenueTrend')}
+          className="bg-white rounded-lg border-2 border-gray-200 p-7 hover:shadow-lg transition-all cursor-pointer text-left w-full transform hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-gray-900">Revenue Trend</h3>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </div>
           <div className="overflow-x-auto">
             <div className="grid grid-cols-7 gap-2 min-w-full">
               {metrics.revenueTrend.slice(-7).map((item, index) => (
@@ -125,8 +215,19 @@ export function SalesMetricsSection({ dateParams }: SalesMetricsSectionProps) {
               ))}
             </div>
           </div>
-        </div>
+        </button>
       )}
+
+      {/* Detail Modal */}
+      <MetricDetailModal
+        isOpen={openModal !== null}
+        onClose={() => setOpenModal(null)}
+        metricType={openModal || 'totalRevenue'}
+        title={getModalTitle(openModal)}
+        dateParams={dateParams}
+      >
+        {renderModalContent()}
+      </MetricDetailModal>
     </div>
   );
 }

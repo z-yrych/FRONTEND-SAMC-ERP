@@ -12,7 +12,7 @@ import { useQuoteReviewStats } from '../hooks/useQuoteReview';
 import { useTransactionPurchaseOrders, useSubmitPurchaseOrder, useConfirmPurchaseOrder, useReceivePurchaseOrder } from '../hooks/usePurchaseOrders';
 import { API_BASE } from '../lib/axios';
 import { useFulfillmentByTransaction, useShipFulfillment, useMarkFulfillmentAsDelivered } from '../hooks/useFulfillments';
-import { usePaymentSchemeAnalysis, useGenerateInvoice, useInvoicesByTransaction, useSendInvoice, useRecordPayment, usePayments } from '../hooks/useInvoices';
+import { usePaymentSchemeAnalysis, useGenerateInvoice, useInvoicesByTransaction, useSendInvoice, useRecordPayment, usePayments, useGenerateInvoicePDF } from '../hooks/useInvoices';
 import { SupplierQuoteEntry } from '../components/quotes/SupplierQuoteEntry';
 import { QuoteComparisonModal } from '../components/quotes/QuoteComparisonModal';
 import { ActiveQuoteComparison } from '../components/quotes/ActiveQuoteComparison';
@@ -203,6 +203,7 @@ export function TransactionDetailsPage() {
   const generateInvoiceMutation = useGenerateInvoice();
   const sendInvoiceMutation = useSendInvoice();
   const recordPaymentMutation = useRecordPayment();
+  const generateInvoicePDFMutation = useGenerateInvoicePDF();
   const { data: payments = [] } = usePayments({ transactionId: id });
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -466,6 +467,9 @@ export function TransactionDetailsPage() {
     shippingCost: number;
     notes?: string;
     dueDate?: string;
+    markupPercentage?: number;
+    pricingMode?: 'exact' | 'markup';
+    lineItemPrices?: { lineItemId: string; unitPrice: number }[];
   }) => {
     try {
       const result = await generateInvoiceMutation.mutateAsync({
@@ -516,6 +520,16 @@ export function TransactionDetailsPage() {
       console.error('Failed to record payment:', error);
       const errorMessage = error?.response?.data?.message || 'Failed to record payment';
       showError(errorMessage);
+    }
+  };
+
+  const handleViewInvoicePDF = async (invoiceId: string) => {
+    try {
+      await generateInvoicePDFMutation.mutateAsync(invoiceId);
+      showSuccess('Opening invoice PDF in new tab...');
+    } catch (error) {
+      console.error('Failed to generate invoice PDF:', error);
+      showError('Failed to generate invoice PDF');
     }
   };
 
@@ -747,7 +761,7 @@ export function TransactionDetailsPage() {
 
         return 'hidden';
       case 'invoicing':
-        if ([TransactionStatus.DELIVERED].includes(status as any)) return 'active';
+        if ([TransactionStatus.READY_FOR_DELIVERY, TransactionStatus.DELIVERED].includes(status as any)) return 'active';
         if ([TransactionStatus.COMPLETED].includes(status as any)) return 'completed';
         return 'locked';
       default:
@@ -1644,143 +1658,157 @@ export function TransactionDetailsPage() {
             </TransactionSection>
 
             {/* Invoicing Section */}
-            <TransactionSection
-              title={getSectionStatus('invoicing') === 'completed' ? 'INVOICING & PAYMENTS' : '4. INVOICING & PAYMENTS'}
-              status={getSectionStatus('invoicing')}
+            {/* Check if invoicing is complete (invoice fully paid) */}
+            {(() => {
+              const isInvoicingCompleted = invoices.some(inv => inv.balanceDue === 0 && inv.status === 'paid') ||
+                                           transaction.status === TransactionStatus.COMPLETED;
+
+              return (
+                <TransactionSection
+                  title={isInvoicingCompleted ? 'INVOICING & PAYMENTS' : '4. INVOICING & PAYMENTS'}
+                  status={getSectionStatus('invoicing')}
               isExpanded={expandedSections.invoicing}
               onToggle={() => toggleSection('invoicing')}
-              lockMessage="Complete delivery first"
+              lockMessage="Wait for all items to be ready"
               sectionRef={invoicingRef}
               isHighlighted={highlightedSection === 'invoicing'}
             >
               <div className="space-y-4">
-                {transaction.status === TransactionStatus.DELIVERED ? (
+                {transaction.status === TransactionStatus.READY_FOR_DELIVERY ||
+                 transaction.status === TransactionStatus.DELIVERED ||
+                 transaction.status === TransactionStatus.COMPLETED ? (
                   <>
-                    <p className="text-gray-600">The order has been completed. Please generate an invoice to bill the client.</p>
+                    {/* Show message and Generate button if no invoices exist */}
                     {invoices.length === 0 ? (
-                      <button
-                        onClick={() => setIsInvoiceModalOpen(true)}
-                        className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
-                      >
-                        Generate Invoice
-                      </button>
-                    ) : null}
-                  </>
-                ) : transaction.status === TransactionStatus.COMPLETED ? (
-                  /* Scenario 2: Invoice Details & Payment Tracking */
-                  invoices.length > 0 ? (
-                    <div className="space-y-6">
-                      {invoices.map((invoice) => {
-                        const invoicePayments = payments.filter(p => p.invoiceId === invoice.id);
+                      <>
+                        <p className="text-gray-600">
+                          {transaction.status === TransactionStatus.READY_FOR_DELIVERY
+                            ? "All items are ready. You can now generate an invoice to bill the client."
+                            : transaction.status === TransactionStatus.DELIVERED
+                            ? "The order has been delivered. Please generate an invoice to bill the client."
+                            : "The order has been completed. Please generate an invoice to bill the client."}
+                        </p>
+                        <button
+                          onClick={() => setIsInvoiceModalOpen(true)}
+                          className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+                        >
+                          Generate Invoice
+                        </button>
+                      </>
+                    ) : (
+                      /* Show full invoice management UI if invoices exist */
+                      <div className="space-y-6">
+                        {invoices.map((invoice) => {
+                          const invoicePayments = payments.filter(p => p.invoiceId === invoice.id);
 
-                        return (
-                          <div key={invoice.id} className="space-y-4">
-                            {/* Invoice Summary Header */}
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                              <h4 className="font-medium text-gray-900 mb-3">Invoice Details</h4>
-                              <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                  <span className="text-sm text-gray-600">Invoice #:</span>
-                                  <p className="font-medium">{invoice.invoiceNumber}</p>
-                                </div>
-                                <div>
-                                  <span className="text-sm text-gray-600">Status:</span>
-                                  <p>
-                                    <span className={`text-xs px-2 py-1 rounded ${invoice.status === 'paid' ? 'bg-green-100 text-green-700' :
-                                      invoice.status === 'partially_paid' ? 'bg-yellow-100 text-yellow-700' :
-                                        invoice.status === 'sent' ? 'bg-blue-100 text-blue-700' :
-                                          'bg-gray-100 text-gray-700'
-                                      }`}>
-                                      {invoice.status === 'partially_paid' ? 'PARTIALLY PAID' : invoice.status.toUpperCase()}
-                                    </span>
-                                  </p>
-                                </div>
-                                <div>
-                                  <span className="text-sm text-gray-600">Balance Due:</span>
-                                  <p className="font-medium text-lg text-red-600">
-                                    ₱{invoice.balanceDue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    Pre-tax: ₱{invoice.subtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                                  </p>
+                          return (
+                            <div key={invoice.id} className="space-y-4">
+                              {/* Invoice Summary Header */}
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <h4 className="font-medium text-gray-900 mb-3">Invoice Details</h4>
+                                <div className="grid grid-cols-3 gap-4">
+                                  <div>
+                                    <span className="text-sm text-gray-600">Invoice #:</span>
+                                    <p className="font-medium">{invoice.invoiceNumber}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm text-gray-600">Status:</span>
+                                    <p>
+                                      <span className={`text-xs px-2 py-1 rounded ${invoice.status === 'paid' ? 'bg-green-100 text-green-700' :
+                                        invoice.status === 'partially_paid' ? 'bg-yellow-100 text-yellow-700' :
+                                          invoice.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                                            'bg-gray-100 text-gray-700'
+                                        }`}>
+                                        {invoice.status === 'partially_paid' ? 'PARTIALLY PAID' : invoice.status.toUpperCase()}
+                                      </span>
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm text-gray-600">Balance Due:</span>
+                                    <p className="font-medium text-lg text-red-600">
+                                      ₱{invoice.balanceDue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Pre-tax: ₱{invoice.subtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                    </p>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
 
-                            {/* Payment History/Schedule */}
-                            <div>
-                              <h4 className="font-medium text-gray-900 mb-3">Payment History</h4>
-                              {invoicePayments.length > 0 ? (
-                                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                  <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                      <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Date</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Amount</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Method</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Reference</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                      {invoicePayments.map((payment) => (
-                                        <tr key={payment.id}>
-                                          <td className="px-4 py-3 text-sm text-gray-900">
-                                            {new Date(payment.paymentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                                          </td>
-                                          <td className="px-4 py-3 text-sm text-gray-900 font-medium">
-                                            ₱{payment.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                                          </td>
-                                          <td className="px-4 py-3 text-sm text-gray-600">{payment.paymentMethod}</td>
-                                          <td className="px-4 py-3 text-sm text-gray-600">{payment.referenceNumber || '-'}</td>
+                              {/* Payment History/Schedule */}
+                              <div>
+                                <h4 className="font-medium text-gray-900 mb-3">Payment History</h4>
+                                {invoicePayments.length > 0 ? (
+                                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                      <thead className="bg-gray-50">
+                                        <tr>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Date</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Amount</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Method</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Reference</th>
                                         </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              ) : (
-                                <p className="text-sm text-gray-600">No payments recorded yet.</p>
-                              )}
-                            </div>
+                                      </thead>
+                                      <tbody className="bg-white divide-y divide-gray-200">
+                                        {invoicePayments.map((payment) => (
+                                          <tr key={payment.id}>
+                                            <td className="px-4 py-3 text-sm text-gray-900">
+                                              {new Date(payment.paymentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-900 font-medium">
+                                              ₱{payment.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-600">{payment.paymentMethod}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-600">{payment.referenceNumber || '-'}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-gray-600">No payments recorded yet.</p>
+                                )}
+                              </div>
 
-                            {/* Actions */}
-                            <div className="flex gap-3">
-                              {invoice.status === 'draft' && (
+                              {/* Actions */}
+                              <div className="flex gap-3">
+                                {invoice.status === 'draft' && (
+                                  <button
+                                    onClick={() => handleSendInvoice(invoice.id)}
+                                    disabled={sendInvoiceMutation.isPending}
+                                    className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+                                  >
+                                    {sendInvoiceMutation.isPending ? 'Sending...' : 'Send Invoice'}
+                                  </button>
+                                )}
+                                {invoice.balanceDue > 0 && invoice.status !== 'draft' && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedInvoiceForPayment(invoice);
+                                      setIsPaymentModalOpen(true);
+                                    }}
+                                    className="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700"
+                                  >
+                                    Record Payment
+                                  </button>
+                                )}
                                 <button
-                                  onClick={() => handleSendInvoice(invoice.id)}
-                                  disabled={sendInvoiceMutation.isPending}
-                                  className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+                                  onClick={() => handleViewInvoicePDF(invoice.id)}
+                                  disabled={generateInvoicePDFMutation.isPending}
+                                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
                                 >
-                                  {sendInvoiceMutation.isPending ? 'Sending...' : 'Send Invoice'}
+                                  {generateInvoicePDFMutation.isPending ? 'Generating...' : 'View Invoice PDF'}
                                 </button>
-                              )}
-                              {invoice.balanceDue > 0 && invoice.status !== 'draft' && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedInvoiceForPayment(invoice);
-                                    setIsPaymentModalOpen(true);
-                                  }}
-                                  className="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700"
-                                >
-                                  Record Payment
-                                </button>
-                              )}
-                              <button
-                                onClick={() => showInfo('View Invoice PDF - Feature coming soon')}
-                                className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-                              >
-                                View Invoice PDF
-                              </button>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-gray-600">Invoice has been generated.</p>
-                  )
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <>
-                    <p className="text-gray-600">This section will become active once the order is marked as 'Delivered'.</p>
+                    <p className="text-gray-600">This section will become active once all items are ready for delivery.</p>
                     <button
                       disabled
                       className="px-4 py-2 text-gray-500 bg-gray-300 rounded cursor-not-allowed"
@@ -1791,6 +1819,8 @@ export function TransactionDetailsPage() {
                 )}
               </div>
             </TransactionSection>
+              );
+            })()}
           </div>
 
           {/* Sticky Progress Guide - Right Side (Desktop) */}
@@ -1933,6 +1963,8 @@ export function TransactionDetailsPage() {
         onConfirm={handleGenerateInvoice}
         isLoading={generateInvoiceMutation.isPending}
         transactionNumber={transaction.transactionNumber}
+        transactionType={transaction.transactionType}
+        lineItems={transaction.lineItems}
         paymentSchemeAnalysis={paymentSchemeAnalysis}
       />
 

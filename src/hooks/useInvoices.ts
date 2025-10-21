@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { analyzePaymentScheme, generateInvoice, getInvoicesByTransaction, sendInvoice, recordPayment, getPayments } from '../lib/api/invoices';
+import { analyzePaymentScheme, generateInvoice, getInvoicesByTransaction, sendInvoice, recordPayment, getPayments, generateInvoicePDF } from '../lib/api/invoices';
 
 /**
  * Hook to analyze payment scheme for a transaction
@@ -72,6 +72,15 @@ export function useRecordPayment() {
       // Invalidate specific invoice
       queryClient.invalidateQueries({ queryKey: ['invoice', variables.invoiceId] });
     }
+  });
+}
+
+/**
+ * Hook to generate and view invoice PDF
+ */
+export function useGenerateInvoicePDF() {
+  return useMutation({
+    mutationFn: generateInvoicePDF
   });
 }
 

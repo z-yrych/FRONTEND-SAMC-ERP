@@ -52,11 +52,18 @@ export function ClientQuoteGeneration({
           // Use the specifically selected supplier quote
           selectedQuote = selectedSupplierQuote
         } else {
-          // Find the best (lowest) supplier quote for this line item
+          // Find supplier quotes for this line item
           const itemQuotes = supplierQuotes.filter(q => q.lineItem.id === item.id)
-          selectedQuote = itemQuotes.reduce((best, current) =>
-            (!best || current.unitCost < best.unitCost) ? current : best
-          , null as SupplierQuote | null)
+
+          // First try to find a quote marked as 'selected' in the database
+          selectedQuote = itemQuotes.find(q => q.status === 'selected') || null
+
+          // If no selected quote, fall back to the lowest-cost quote
+          if (!selectedQuote && itemQuotes.length > 0) {
+            selectedQuote = itemQuotes.reduce((best, current) =>
+              (!best || current.unitCost < best.unitCost) ? current : best
+            , null as SupplierQuote | null)
+          }
         }
 
         // Calculate hybrid cost breakdown: inventory cost + supplier cost

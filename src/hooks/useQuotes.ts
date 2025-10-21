@@ -112,6 +112,11 @@ export function useSelectSupplierQuote() {
       queryClient.invalidateQueries({
         queryKey: ['line-item-quotes']
       })
+
+      // Invalidate transaction data as costingStrategy will change
+      queryClient.invalidateQueries({
+        queryKey: ['transaction']
+      })
     }
   })
 }

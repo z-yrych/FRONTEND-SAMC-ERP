@@ -122,6 +122,14 @@ const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
       queryClient.invalidateQueries({ queryKey: ['products-with-stock'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-batches'] });
 
+      // Invalidate transaction queries to refresh allocation data
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      if (data.updatedTransactions && data.updatedTransactions.length > 0) {
+        data.updatedTransactions.forEach((transaction: any) => {
+          queryClient.invalidateQueries({ queryKey: ['transaction', transaction.id] });
+        });
+      }
+
       // Extract batch data from response
       if (data.batches && data.batches.length > 0) {
         const batchesForPrint = data.batches.map((batch: any) => ({
